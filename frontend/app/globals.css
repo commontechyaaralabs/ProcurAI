@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #31343A;
+  
+  /* Bosch Primary Blue */
+  --bosch-blue: #005691;
+  --bosch-blue-light: #0066a3;
+  --bosch-blue-dark: #004574;
+  
+  /* Bosch Color Palette */
+  --bosch-red: #E00420;
+  --bosch-gray-light: #DFE2E4;
+  --bosch-gray-medium-light: #B6BBBE;
+  --bosch-gray-medium-dark: #9DA5A8;
+  --bosch-gray-dark: #31343A;
+  
+  /* Status Colors */
+  --budget-green: #10b981;
+  --budget-amber: #f59e0b;
+  
+  /* Legacy grays (mapped to Bosch) */
+  --gray-50: #DFE2E4;
+  --gray-100: #DFE2E4;
+  --gray-200: #DFE2E4;
+  --gray-300: #B6BBBE;
+  --gray-400: #9DA5A8;
+  --gray-500: #9DA5A8;
+  --gray-600: #9DA5A8;
+  --gray-700: #31343A;
+  --gray-800: #31343A;
+  --gray-900: #31343A;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  /* Map Tailwind gray colors to Bosch palette - direct hex values for Tailwind v4 */
+  --color-gray-50: #DFE2E4;
+  --color-gray-100: #DFE2E4;
+  --color-gray-200: #DFE2E4;
+  --color-gray-300: #B6BBBE;
+  --color-gray-400: #9DA5A8;
+  --color-gray-500: #9DA5A8;
+  --color-gray-600: #9DA5A8;
+  --color-gray-700: #31343A;
+  --color-gray-800: #31343A;
+  --color-gray-900: #31343A;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
