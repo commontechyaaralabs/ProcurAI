@@ -13,8 +13,8 @@ interface RequestDetailsModalProps {
   onValidate?: () => void;
   onSendToRFQ?: () => void;
   onHold?: () => void;
-  onInviteToRFQ?: (vendorId: string) => void;
-  onCompare?: (vendorId: string) => void;
+  onInviteToRFQ?: (vendorId: string, requestId?: string) => void;
+  onCompare?: (vendorId: string, requestId?: string) => void;
   onViewProfile?: (vendorId: string) => void;
 }
 

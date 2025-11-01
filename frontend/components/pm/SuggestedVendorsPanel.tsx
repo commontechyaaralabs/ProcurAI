@@ -11,7 +11,7 @@ export function SuggestedVendorsPanel({ requestId, onClose, onInviteToRFQ, onCom
   const suggestions = suggestVendorsForRequest({
     itemName: req.itemName,
     department: req.department,
-    categoryHint: req.category as any, // if you later add it on requests
+    categoryHint: undefined, // category not available on requests
     topN: 3,
   });
 
