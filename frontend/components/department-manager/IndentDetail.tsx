@@ -35,6 +35,8 @@ interface IndentDetailProps {
   allocatedBudget?: number;
   committedAmount?: number;
   availableAmount?: number;
+  onApprove?: (requestId: string) => void;
+  onReject?: (requestId: string) => void;
 }
 
 // Mock approval history - in real app, this would come from API
@@ -79,7 +81,9 @@ export function IndentDetail({
   request, 
   allocatedBudget = 2000000,
   committedAmount = 1450000,
-  availableAmount = 230000
+  availableAmount = 230000,
+  onApprove,
+  onReject
 }: IndentDetailProps) {
   const utilizationPercent = allocatedBudget > 0 ? (committedAmount / allocatedBudget) * 100 : 0;
   const approvalHistory = getApprovalHistory(request);
@@ -115,29 +119,54 @@ export function IndentDetail({
 
   return (
     <div className="space-y-6">
-      {/* Budget Context */}
-      <div className="bg-[#DFE2E4]/30 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-[#31343A] mb-3">Budget Context</h3>
-        <div className="grid grid-cols-3 gap-4">
+      {/* Budget Snapshot */}
+      <div className="bg-[#DFE2E4]/30 rounded-lg p-4 border border-[#DFE2E4]">
+        <h3 className="text-sm font-semibold text-[#31343A] mb-3">Budget Snapshot</h3>
+        <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
-            <p className="text-xs text-[#9DA5A8]">Allocated Budget</p>
+            <p className="text-xs text-[#9DA5A8]">Total Budget</p>
             <p className="text-lg font-semibold text-[#31343A] mt-1">{formatCurrency(allocatedBudget)}</p>
           </div>
           <div>
-            <p className="text-xs text-[#9DA5A8]">Committed</p>
+            <p className="text-xs text-[#9DA5A8]">Utilized</p>
             <p className="text-lg font-semibold text-[#31343A] mt-1">{formatCurrency(committedAmount)}</p>
             <p className="text-xs text-[#9DA5A8] mt-1">{utilizationPercent.toFixed(1)}% utilized</p>
           </div>
           <div>
-            <p className="text-xs text-[#9DA5A8]">Available</p>
-            <p className="text-lg font-semibold text-[#31343A] mt-1">{formatCurrency(availableAmount)}</p>
+            <p className="text-xs text-[#9DA5A8]">After Approval</p>
+            <p className="text-lg font-semibold text-[#31343A] mt-1">
+              {formatCurrency(committedAmount + (request.estimatedCost || 0))}
+            </p>
+            <p className="text-xs text-[#9DA5A8] mt-1">
+              ({(((committedAmount + (request.estimatedCost || 0)) / allocatedBudget) * 100).toFixed(1)}%)
+            </p>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 p-3 bg-white rounded-lg border border-[#DFE2E4]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-[#31343A]">Budget Status</span>
+            {((committedAmount + (request.estimatedCost || 0)) / allocatedBudget) * 100 > 95 ? (
+              <span className="px-2 py-1 bg-[#E00420]/10 text-[#E00420] rounded-full text-xs font-semibold">
+                Critical (Approval Escalation Required)
+              </span>
+            ) : ((committedAmount + (request.estimatedCost || 0)) / allocatedBudget) * 100 > 90 ? (
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+                Warning (Near Limit)
+              </span>
+            ) : (
+              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                Safe (Within Budget)
+              </span>
+            )}
+          </div>
           <div className="h-2 bg-[#DFE2E4]/50 rounded-full overflow-hidden">
             <div 
-              className="h-2 bg-[#005691] rounded-full transition-all"
-              style={{ width: `${Math.min(utilizationPercent, 100)}%` }}
+              className={`h-2 rounded-full transition-all ${
+                ((committedAmount + (request.estimatedCost || 0)) / allocatedBudget) * 100 > 95 ? 'bg-[#E00420]' :
+                ((committedAmount + (request.estimatedCost || 0)) / allocatedBudget) * 100 > 90 ? 'bg-yellow-500' :
+                'bg-[#005691]'
+              }`}
+              style={{ width: `${Math.min(((committedAmount + (request.estimatedCost || 0)) / allocatedBudget) * 100, 100)}%` }}
             />
           </div>
         </div>
@@ -274,6 +303,19 @@ export function IndentDetail({
           </div>
         )}
 
+        {/* Attachments */}
+        <div>
+          <h3 className="text-sm font-semibold text-[#31343A] mb-2">Attachments</h3>
+          <div className="bg-white border border-[#DFE2E4] rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-[#31343A]">
+              <span className="text-[#005691] hover:underline cursor-pointer">Quote.pdf</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-[#31343A]">
+              <span className="text-[#005691] hover:underline cursor-pointer">VendorComparison.xlsx</span>
+            </div>
+          </div>
+        </div>
+
         {/* Approval History */}
         <div>
           <h3 className="text-sm font-semibold text-[#31343A] mb-2">Approval History</h3>
@@ -290,7 +332,9 @@ export function IndentDetail({
                       {getActionLabel(item.action)}
                     </span>
                   </div>
-                  <p className="text-xs text-[#9DA5A8] mb-2">{formatDate(item.timestamp)}</p>
+                  <p className="text-xs text-[#9DA5A8] mb-2">
+                    {new Date(item.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} ({item.approver})
+                  </p>
                   {item.notes && (
                     <p className="text-sm text-[#31343A] mt-2 italic">&quot;{item.notes}&quot;</p>
                   )}
@@ -298,10 +342,48 @@ export function IndentDetail({
               ))
             ) : (
               <div className="bg-white border border-[#DFE2E4] rounded-lg p-4">
-                <p className="text-sm text-[#9DA5A8]">No approval history available</p>
+                <div className="space-y-2">
+                  <p className="text-xs text-[#31343A]">Submitted: {new Date(request.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} ({request.requester})</p>
+                  <p className="text-xs text-[#9DA5A8]">Pending: Department Manager</p>
+                </div>
               </div>
             )}
           </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 pt-4 border-t border-[#DFE2E4]">
+          {request.status === 'pending' || request.status === 'in-review' ? (
+            <>
+              <button 
+                onClick={() => onApprove?.(request.id)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              >
+                Approve
+              </button>
+              <button 
+                onClick={() => onReject?.(request.id)}
+                className="px-4 py-2 bg-[#E00420] text-white rounded-lg hover:bg-[#C00400] transition-colors text-sm font-medium"
+              >
+                Reject
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                disabled
+                className="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed text-sm font-medium"
+              >
+                {request.status === 'approved' ? 'Approved' : request.status === 'rejected' ? 'Rejected' : 'Processed'}
+              </button>
+            </>
+          )}
+          <button className="px-4 py-2 border border-[#B6BBBE] text-[#31343A] rounded-lg hover:bg-[#DFE2E4] transition-colors text-sm font-medium">
+            Add Remark
+          </button>
+          <button className="px-4 py-2 border border-[#B6BBBE] text-[#31343A] rounded-lg hover:bg-[#DFE2E4] transition-colors text-sm font-medium">
+            View History
+          </button>
         </div>
       </div>
     </div>

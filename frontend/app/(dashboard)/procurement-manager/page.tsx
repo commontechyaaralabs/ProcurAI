@@ -61,8 +61,9 @@ import { VendorProfileModal } from '@/components/pm/VendorProfileModal';
 import { ContractDetailsModal } from '@/components/pm/ContractDetailsModal';
 import { RequestDetailsModal } from '@/components/pm/RequestDetailsModal';
 import { VendorComparisonModal } from '@/components/pm/VendorComparisonModal';
+import { RFQComparisonModal } from '@/components/pm/RFQComparisonModal';
 import { suggestVendorsForRequest } from '@/components/pm/vendorSuggestUtils';
-import { EnhancedVendor, Approval, EnhancedRequest, EnhancedContract, EnhancedApproval } from '@/types';
+import { EnhancedVendor, Approval, EnhancedRequest, EnhancedContract, EnhancedApproval, QuoteApproval } from '@/types';
 import { ApprovalsTabs } from '@/components/pm/approvals/ApprovalsTabs';
 import { ApprovalFilters, FilterState } from '@/components/pm/approvals/ApprovalFilters';
 import { ApprovalDrawer } from '@/components/pm/approvals/ApprovalDrawer';
@@ -133,6 +134,23 @@ export default function ProcurementManagerDashboard() {
   const [vendorsToCompare, setVendorsToCompare] = useState<EnhancedVendor[]>([]);
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
   const [currentRequestForRFQ, setCurrentRequestForRFQ] = useState<string | null>(null);
+  const [selectedRFQForComparison, setSelectedRFQForComparison] = useState<{
+    rfqId: string;
+    rfqNumber: string;
+    itemName: string;
+    category: string;
+    quotes: Array<{
+      vendorId: string;
+      vendorName: string;
+      quoteAmount: number;
+      leadTimeDays?: number;
+      onTimePct?: number;
+      qualityScore?: number;
+      submittedAt?: string;
+      notes?: string;
+    }>;
+  } | null>(null);
+  const [isRFQComparisonModalOpen, setIsRFQComparisonModalOpen] = useState(false);
   
   // Approvals hub state
   const [approvalsTab, setApprovalsTab] = useState<'INDENT' | 'QUOTE' | 'PO'>('INDENT');
@@ -174,8 +192,70 @@ export default function ProcurementManagerDashboard() {
     showToast(`Request ${requestId} placed on hold`, 'info');
   };
 
-  const handleCompareRFQ = (rfqId: string) => {
-    showToast(`Opening comparison view for ${rfqId}`, 'info');
+  const handleCompareRFQ = (rfqNumber: string) => {
+    // Find the RFQ in mockRFQs
+    const rfq = mockRFQs.find(r => r.rfqNumber === rfqNumber);
+    if (!rfq) {
+      showToast(`RFQ ${rfqNumber} not found`, 'error');
+      return;
+    }
+
+    // Find quote approval for this RFQ to get vendor quotes
+    const quoteApproval = enhancedApprovalsState.find(
+      (a): a is QuoteApproval => 
+        a.approvalType === 'QUOTE' && 
+        (a.referenceId === rfqNumber || a.referenceNumber === rfqNumber || (a as QuoteApproval).rfqId === rfq.id)
+    );
+
+    if (quoteApproval && quoteApproval.suppliers && quoteApproval.suppliers.length > 0) {
+      // Use quotes from approval
+      setSelectedRFQForComparison({
+        rfqId: rfq.id,
+        rfqNumber: rfq.rfqNumber,
+        itemName: rfq.itemName,
+        category: rfq.category,
+        quotes: quoteApproval.suppliers.map(s => ({
+          vendorId: s.vendorId,
+          vendorName: s.vendorName,
+          quoteAmount: s.quoteAmount,
+          leadTimeDays: s.leadTimeDays,
+          onTimePct: s.onTimePct,
+          qualityScore: s.qualityScore ? (s.qualityScore / 5) * 100 : undefined, // Convert 0-5 scale to percentage
+        })),
+      });
+      setIsRFQComparisonModalOpen(true);
+    } else {
+      // Generate mock quotes from vendors for RFQ if no approval exists
+      const matchingVendors = enhancedVendors
+        .filter(v => v.category.toLowerCase() === rfq.category.toLowerCase() || 
+                    rfq.itemName.toLowerCase().includes(v.name.toLowerCase().split(' ')[0].toLowerCase()))
+        .slice(0, Math.min(4, rfq.suppliersResponded || 3));
+
+      if (matchingVendors.length === 0) {
+        showToast(`No quotes available for ${rfqNumber}`, 'info');
+        return;
+      }
+
+      // Generate mock quotes with variation
+      const baseQuote = rfq.lowestQuote;
+      const quotes = matchingVendors.map((v, idx) => ({
+        vendorId: v.id,
+        vendorName: v.name,
+        quoteAmount: baseQuote + (idx * 50000) + Math.floor(Math.random() * 50000),
+        leadTimeDays: v.avgLeadTimeDays || 10 + idx * 2,
+        onTimePct: v.onTimeDeliveryPercent,
+        qualityScore: v.qualityPercent, // Already a percentage (0-100)
+      })).sort((a, b) => a.quoteAmount - b.quoteAmount);
+
+      setSelectedRFQForComparison({
+        rfqId: rfq.id,
+        rfqNumber: rfq.rfqNumber,
+        itemName: rfq.itemName,
+        category: rfq.category,
+        quotes,
+      });
+      setIsRFQComparisonModalOpen(true);
+    }
   };
 
   const handleRemindRFQ = (rfqId: string) => {
@@ -1416,6 +1496,25 @@ export default function ProcurementManagerDashboard() {
           setVendorsToCompare([]);
         }}
       />
+      {selectedRFQForComparison && (
+        <RFQComparisonModal
+          rfqId={selectedRFQForComparison.rfqId}
+          rfqNumber={selectedRFQForComparison.rfqNumber}
+          itemName={selectedRFQForComparison.itemName}
+          category={selectedRFQForComparison.category}
+          quotes={selectedRFQForComparison.quotes}
+          isOpen={isRFQComparisonModalOpen}
+          onClose={() => {
+            setIsRFQComparisonModalOpen(false);
+            setSelectedRFQForComparison(null);
+          }}
+          onSelectQuote={(vendorId) => {
+            showToast(`Selected quote from ${selectedRFQForComparison.quotes.find(q => q.vendorId === vendorId)?.vendorName}`, 'success');
+            setIsRFQComparisonModalOpen(false);
+            setSelectedRFQForComparison(null);
+          }}
+        />
+      )}
       <ApprovalDrawer
         approval={selectedApproval}
         isOpen={isApprovalDrawerOpen}

@@ -62,7 +62,19 @@ export function Sidebar({ navItems, role, isExpanded, onExpandChange }: SidebarP
       <nav className={cn("space-y-1 flex-1 transition-all duration-300", isExpanded ? "p-4" : "p-2")}>
         {navItems.map((item, index) => {
           const Icon = item.icon;
-          const isActive = item.isActive !== undefined ? item.isActive : (pathname === item.href || (item.href !== '#' && item.href !== '/procurement-manager' && pathname?.startsWith(item.href + '/')) || (item.href === '/procurement-manager' && pathname === '/procurement-manager'));
+          // Improved active state logic: exact match OR (starts with href + '/' but not another full route)
+          let isActive = false;
+          if (item.isActive !== undefined) {
+            isActive = item.isActive;
+          } else if (item.href === '/procurement-manager') {
+            isActive = pathname === '/procurement-manager';
+          } else if (item.href === '/department-manager') {
+            // For base route, only match if pathname is exactly '/department-manager' or '/department-manager/'
+            isActive = pathname === '/department-manager' || pathname === '/department-manager/';
+          } else {
+            // For other routes, check exact match or if pathname starts with the href (for nested routes)
+            isActive = pathname === item.href || pathname?.startsWith(item.href + '/') || pathname === item.href + '/';
+          }
           
           const content = (
             <>

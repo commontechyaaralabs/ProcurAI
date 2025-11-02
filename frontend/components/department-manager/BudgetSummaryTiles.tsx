@@ -1,6 +1,6 @@
 'use client';
 
-import { Wallet, TrendingUp, TrendingDown, Target, Package, Clock } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Clock, Package, UserCheck } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,10 @@ interface BudgetSummaryTilesProps {
   onBudgetPercent: number;
   activeIndents: number;
   avgApprovalTime: number; // in days
+  underBudgetCount?: number;
+  atLimitCount?: number;
+  overBudgetCount?: number;
+  pendingApprovalsCount?: number;
 }
 
 export function BudgetSummaryTiles({
@@ -20,44 +24,45 @@ export function BudgetSummaryTiles({
   onBudgetPercent,
   activeIndents,
   avgApprovalTime,
+  underBudgetCount = 0,
+  atLimitCount = 0,
+  overBudgetCount = 0,
+  pendingApprovalsCount = 0,
 }: BudgetSummaryTilesProps) {
   const utilizationPercent = (utilized / totalBudget) * 100;
   
   const tiles = [
     {
-      icon: Wallet,
-      label: 'Total Budget',
-      value: formatCurrency(totalBudget),
-      color: 'bg-[#005691]/10 border-[#005691]/20',
-      iconColor: 'text-[#005691]',
+      icon: CheckCircle2,
+      label: 'Under Budget Indents',
+      value: underBudgetCount.toString(),
+      color: 'bg-green-50 border-green-200',
+      iconColor: 'text-green-600',
+      description: 'Safe purchases',
     },
     {
-      icon: TrendingUp,
-      label: 'Utilized',
-      value: formatCurrency(utilized),
-      color: utilizationPercent > 90 ? 'bg-[#E00420]/10 border-[#E00420]/20' : utilizationPercent > 75 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200',
-      iconColor: utilizationPercent > 90 ? 'text-[#E00420]' : utilizationPercent > 75 ? 'text-yellow-600' : 'text-green-600',
-      trend: utilizationPercent > 90 ? 'high' : 'normal',
+      icon: AlertTriangle,
+      label: 'At Limit',
+      value: atLimitCount.toString(),
+      color: 'bg-yellow-50 border-yellow-200',
+      iconColor: 'text-yellow-600',
+      description: 'Needs manager review',
     },
     {
-      icon: TrendingDown,
-      label: 'Remaining',
-      value: formatCurrency(remaining),
-      color: remaining < totalBudget * 0.1 ? 'bg-[#E00420]/10 border-[#E00420]/20' : 'bg-blue-50 border-blue-200',
-      iconColor: remaining < totalBudget * 0.1 ? 'text-[#E00420]' : 'text-blue-600',
+      icon: XCircle,
+      label: 'Over Budget',
+      value: overBudgetCount.toString(),
+      color: 'bg-[#E00420]/10 border-[#E00420]/20',
+      iconColor: 'text-[#E00420]',
+      description: 'Escalation required',
     },
     {
-      icon: Target,
-      label: 'Utilization %',
-      value: `${utilizationPercent.toFixed(1)}%`,
-      color: 
-        utilizationPercent > 90 ? 'bg-[#E00420]/10 border-[#E00420]/20' :
-        utilizationPercent > 75 ? 'bg-yellow-50 border-yellow-200' :
-        'bg-green-50 border-green-200',
-      iconColor: 
-        utilizationPercent > 90 ? 'text-[#E00420]' :
-        utilizationPercent > 75 ? 'text-yellow-600' :
-        'text-green-600',
+      icon: UserCheck,
+      label: 'Pending Approvals',
+      value: pendingApprovalsCount.toString(),
+      color: 'bg-orange-50 border-orange-200',
+      iconColor: 'text-orange-600',
+      description: 'Awaiting decisions',
     },
     {
       icon: Package,
@@ -65,13 +70,15 @@ export function BudgetSummaryTiles({
       value: activeIndents.toString(),
       color: 'bg-purple-50 border-purple-200',
       iconColor: 'text-purple-600',
+      description: 'Total in workflow',
     },
     {
       icon: Clock,
       label: 'Avg Approval Time',
       value: `${avgApprovalTime} Days`,
-      color: avgApprovalTime > 5 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200',
-      iconColor: avgApprovalTime > 5 ? 'text-orange-600' : 'text-green-600',
+      color: avgApprovalTime > 5 ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200',
+      iconColor: avgApprovalTime > 5 ? 'text-orange-600' : 'text-blue-600',
+      description: 'Process performance',
     },
   ];
 
@@ -89,12 +96,10 @@ export function BudgetSummaryTiles({
           >
             <div className="flex items-start justify-between mb-2">
               <Icon className={cn('w-5 h-5', tile.iconColor)} />
-              {(tile.trend === 'high' || tile.label === 'Remaining' && remaining < totalBudget * 0.1) && (
-                <span className="text-xs font-semibold text-[#E00420]">!</span>
-              )}
             </div>
             <div className="text-xs font-medium text-[#9DA5A8] mb-1">{tile.label}</div>
-            <div className="text-xl font-bold text-[#31343A]">{tile.value}</div>
+            <div className="text-2xl font-bold text-[#31343A] mb-1">{tile.value}</div>
+            <div className="text-[10px] text-[#9DA5A8]">{tile.description}</div>
           </div>
         );
       })}

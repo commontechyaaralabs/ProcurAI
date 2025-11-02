@@ -106,8 +106,12 @@ export function AlertsCenter({ alerts, onDismiss, onMarkRead }: AlertsCenterProp
                     </span>
                     {alert.actionLabel && (
                       <button
-                        onClick={() => {
-                          alert.onAction?.();
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (alert.onAction) {
+                            alert.onAction();
+                          }
                           onMarkRead?.(alert.id);
                         }}
                         className="text-xs px-2 py-1 bg-[#005691] text-white rounded hover:bg-[#004574] transition-colors"

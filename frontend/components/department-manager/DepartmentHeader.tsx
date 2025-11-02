@@ -49,7 +49,7 @@ export function DepartmentHeader({
     : 'neutral';
 
   return (
-    <div className="sticky top-0 z-20 bg-white border-b border-[#DFE2E4] shadow-sm">
+    <div className="bg-white border-b border-[#DFE2E4] shadow-sm">
       <div className="p-4 space-y-4">
         {/* Top Row: Department Info */}
         <div className="flex items-center justify-between">
@@ -77,60 +77,62 @@ export function DepartmentHeader({
           </div>
         </div>
 
-        {/* Budget Summary Row */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Budget Overview */}
-          <div className="md:col-span-2 flex items-center gap-6">
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-[#9DA5A8]">Total Budget</span>
-                <span className="text-lg font-semibold text-[#31343A]">{formatCurrency(totalBudget)}</span>
+        {/* Budget Summary Row - Enhanced with Progress Bar */}
+        <div className="bg-[#DFE2E4]/10 rounded-lg p-4 border border-[#DFE2E4]">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-6">
+              <div>
+                <span className="text-xs text-[#9DA5A8]">Allocated</span>
+                <div className="text-lg font-semibold text-[#31343A]">{formatCurrency(totalBudget)}</div>
               </div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-[#9DA5A8]">Spent</span>
-                <span className="text-lg font-semibold text-[#31343A]">{formatCurrency(spent)}</span>
+              <div>
+                <span className="text-xs text-[#9DA5A8]">Utilized</span>
+                <div className="text-lg font-semibold text-[#31343A]">{formatCurrency(spent)}</div>
               </div>
-              <div className="flex items-center justify-between">
+              <div>
                 <span className="text-xs text-[#9DA5A8]">Remaining</span>
-                <span className="text-lg font-semibold text-[#005691]">{formatCurrency(remaining)}</span>
+                <div className="text-lg font-semibold text-[#005691]">{formatCurrency(remaining)}</div>
               </div>
             </div>
-            <div className="flex-1">
-              {/* Utilization Gauge */}
-              <div className="relative w-24 h-24 mx-auto">
-                <svg className="transform -rotate-90 w-24 h-24">
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="40"
-                    stroke="#DFE2E4"
-                    strokeWidth="8"
-                    fill="none"
-                  />
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="40"
-                    stroke={
-                      utilization > 95 ? '#E00420' :
-                      utilization > 80 ? '#F59E0B' :
-                      '#10B981'
-                    }
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={`${(utilization / 100) * 251.2} 251.2`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-[#31343A]">{utilization.toFixed(1)}%</div>
-                    <div className="text-xs text-[#9DA5A8]">Used</div>
-                  </div>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-lg font-bold text-[#31343A]">{utilization.toFixed(1)}% Utilized</div>
+                <div className="text-xs text-[#9DA5A8]">Budget Utilization</div>
+              </div>
+              {utilization > 95 && (
+                <span className="px-3 py-1 bg-[#E00420]/10 text-[#E00420] rounded-full text-xs font-semibold">
+                  Near Limit
+                </span>
+              )}
+              {utilization > 80 && utilization <= 95 && (
+                <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+                  At Limit
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Progress Bar */}
+          <div className="relative">
+            <div className="h-6 bg-[#DFE2E4]/50 rounded-full overflow-hidden border border-[#DFE2E4]">
+              <div 
+                className={`h-full rounded-full transition-all flex items-center justify-center ${
+                  utilization > 95 ? 'bg-[#E00420]' :
+                  utilization > 80 ? 'bg-yellow-500' :
+                  'bg-[#005691]'
+                }`}
+                style={{ width: `${Math.min(utilization, 100)}%` }}
+              >
+                {utilization > 10 && (
+                  <span className="text-xs font-semibold text-white px-2">
+                    {utilization.toFixed(1)}%
+                  </span>
+                )}
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
 
           {/* Budget Trend Sparkline */}
           <div className="flex items-center gap-4">
@@ -169,19 +171,19 @@ export function DepartmentHeader({
           </div>
 
           {/* Smart Add-ons */}
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <div className="text-xs text-[#9DA5A8]">Quick Info</div>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 text-xs">
                 <Clock className="w-3.5 h-3.5 text-[#9DA5A8]" />
                 <span className="text-[#31343A]">
-                  Last Updated: {new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  Last Updated: {new Date(lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}, {new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <Calendar className="w-3.5 h-3.5 text-[#9DA5A8]" />
                 <span className="text-[#31343A]">
-                  Next Review: {new Date(nextReviewDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  Next Review: {new Date(nextReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </span>
               </div>
             </div>
