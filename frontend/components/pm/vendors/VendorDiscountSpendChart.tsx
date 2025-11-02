@@ -59,21 +59,22 @@ export function VendorDiscountSpendChart() {
 
     // Process each PO to calculate discount
     filteredPOs.forEach(po => {
-      // Find related RFQ (match by item name or vendor)
-      const relatedRFQ = mockRFQs.find(rfq => {
-        const rfqDate = new Date(rfq.dueDate);
-        return rfqDate <= dateRange.endDate && 
-               (rfq.itemName.toLowerCase().includes(po.itemName.toLowerCase().substring(0, 10)) ||
-                po.vendor.toLowerCase().includes(rfq.itemName.toLowerCase().substring(0, 10)));
-      });
-
-      if (!relatedRFQ) return;
-
+      // Find related RFQ (match by vendor and date proximity)
       const vendor = enhancedVendors.find(v => v.id === po.vendorId || v.name === po.vendor);
       if (!vendor) return;
 
       // Filter by category if selected
       if (categoryFilter !== 'all' && vendor.category !== categoryFilter) return;
+
+      // Find RFQ that matches vendor and is around the same time period
+      const relatedRFQ = mockRFQs.find(rfq => {
+        const rfqDate = new Date(rfq.dueDate);
+        const poDate = new Date(po.createdAt);
+        const daysDiff = Math.abs((rfqDate.getTime() - poDate.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 60; // RFQ within 60 days of PO
+      });
+
+      if (!relatedRFQ) return;
 
       const firstQuote = relatedRFQ.lowestQuote;
       const poAmount = po.amount;
