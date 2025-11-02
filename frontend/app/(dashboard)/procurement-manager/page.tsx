@@ -39,6 +39,7 @@ import { SuggestedVendorsPanel } from '@/components/pm/SuggestedVendorsPanel';
 import { RequestsAgingBuckets } from '@/components/pm/requests/RequestsAgingBuckets';
 import { UrgencyBudgetMatrix } from '@/components/pm/requests/UrgencyBudgetMatrix';
 import { RepeatingItems } from '@/components/pm/requests/RepeatingItems';
+import { CategoryTreemap } from '@/components/pm/requests/CategoryTreemap';
 
 import { RFQResponseLadder } from '@/components/pm/rfq/RFQResponseLadder';
 import { QuoteSpreadSpotlight } from '@/components/pm/rfq/QuoteSpreadSpotlight';
@@ -776,10 +777,13 @@ export default function ProcurementManagerDashboard() {
               <RFQResponseLadder />
             </div>
 
-            {/* New two-up: Delivery risk + 3-way match */}
+            {/* New two-up: Delivery risk + 3-way match with Category Treemap */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <DeliveryRiskStrip />
-              <ThreeWayMatchStatus />
+              <div className="space-y-6">
+                <ThreeWayMatchStatus />
+                <CategoryTreemap requests={requests} />
+              </div>
             </div>
 
             {/* Quadrant View: Chart + Quadrant Details */}
