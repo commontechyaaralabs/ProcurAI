@@ -16,37 +16,63 @@ interface NavItem {
 interface SidebarProps {
   navItems: NavItem[];
   role: string;
+  isExpanded: boolean;
+  onExpandChange: (expanded: boolean) => void;
 }
 
-export function Sidebar({ navItems, role }: SidebarProps) {
+export function Sidebar({ navItems, role, isExpanded, onExpandChange }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <div className="w-64 bg-[#31343A] border-r border-[#9DA5A8] h-screen fixed left-0 top-0 overflow-y-auto flex flex-col">
-      <div className="h-16 border-b border-[#9DA5A8] bg-gradient-to-r from-[#31343A] via-[#2a2d33] to-[#31343A] flex items-center px-5">
-        <div className="flex items-center gap-3">
-          <div className="bg-white px-4 py-2.5 rounded-lg shadow-lg border border-[#DFE2E4]/50 hover:shadow-xl transition-all duration-300">
+    <div 
+      className={cn(
+        'bg-[#31343A] border-r border-[#9DA5A8] h-screen fixed left-0 top-0 overflow-y-auto flex flex-col transition-all duration-300 z-50',
+        isExpanded ? 'w-64' : 'w-20'
+      )}
+      onMouseEnter={() => onExpandChange(true)}
+      onMouseLeave={() => onExpandChange(false)}
+    >
+      <div className={cn(
+        "h-16 border-b border-[#9DA5A8] bg-gradient-to-r from-[#31343A] via-[#2a2d33] to-[#31343A] flex items-center transition-all duration-300",
+        isExpanded ? "px-5" : "px-2 justify-center"
+      )}>
+        <div className={cn("flex items-center transition-all duration-300", isExpanded ? "gap-3" : "gap-0")}>
+          <div className={cn(
+            "bg-white rounded-lg shadow-lg border border-[#DFE2E4]/50 hover:shadow-xl transition-all duration-300 flex-shrink-0 flex items-center justify-center",
+            isExpanded ? "px-4 py-2.5" : "px-2 py-2"
+          )}>
             <img 
               src="/bosch_logo-removebg-preview.png" 
               alt="Bosch Logo" 
-              className="h-8 w-auto object-contain"
+              className={cn(
+                "object-contain transition-all duration-300",
+                isExpanded ? "h-8 w-auto" : "h-6 w-auto max-w-[60px]"
+              )}
             />
           </div>
-          <div>
-            <p className="text-xs font-semibold text-[#DFE2E4] tracking-wider">PROCURAI</p>
-            <p className="text-[10px] text-[#B6BBBE] mt-0.5">Enterprise Platform</p>
+          <div className={cn(
+            "transition-all duration-300",
+            isExpanded ? "opacity-100 max-w-xs" : "opacity-0 max-w-0 overflow-hidden"
+          )}>
+            <p className="text-xs font-semibold text-[#DFE2E4] tracking-wider whitespace-nowrap">PROCURAI</p>
+            <p className="text-[10px] text-[#B6BBBE] mt-0.5 whitespace-nowrap">Enterprise Platform</p>
           </div>
         </div>
       </div>
-      <nav className="p-4 space-y-1 flex-1">
+      <nav className={cn("space-y-1 flex-1 transition-all duration-300", isExpanded ? "p-4" : "p-2")}>
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = item.isActive !== undefined ? item.isActive : (pathname === item.href || (item.href !== '#' && item.href !== '/procurement-manager' && pathname?.startsWith(item.href + '/')) || (item.href === '/procurement-manager' && pathname === '/procurement-manager'));
           
           const content = (
             <>
-              <Icon className="h-5 w-5" />
-              {item.label}
+              <Icon className={cn("flex-shrink-0", isExpanded ? "h-5 w-5" : "h-6 w-6")} />
+              <span className={cn(
+                "whitespace-nowrap transition-all duration-300",
+                isExpanded ? "opacity-100 max-w-xs" : "opacity-0 max-w-0 overflow-hidden"
+              )}>
+                {item.label}
+              </span>
             </>
           );
 
@@ -56,11 +82,13 @@ export function Sidebar({ navItems, role }: SidebarProps) {
                 key={`${item.href}-${index}`}
                 onClick={item.onClick}
                 className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                  'w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200',
+                  isExpanded ? 'gap-3 px-4 py-3' : 'justify-center px-2 py-3',
                   isActive
                     ? 'bg-[#E00420] text-white'
                     : 'text-[#DFE2E4] hover:bg-[#9DA5A8]/20'
                 )}
+                title={!isExpanded ? item.label : undefined}
               >
                 {content}
               </button>
@@ -72,11 +100,13 @@ export function Sidebar({ navItems, role }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center rounded-lg text-sm font-medium transition-all duration-200',
+                isExpanded ? 'gap-3 px-4 py-3' : 'justify-center px-2 py-3',
                 isActive
                   ? 'bg-[#E00420] text-white'
                   : 'text-[#DFE2E4] hover:bg-[#9DA5A8]/20'
               )}
+              title={!isExpanded ? item.label : undefined}
             >
               {content}
             </Link>
@@ -84,28 +114,40 @@ export function Sidebar({ navItems, role }: SidebarProps) {
         })}
       </nav>
       <div className="mt-auto border-t border-[#9DA5A8] bg-[#9DA5A8]/10">
-        <div className="p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-8 w-8 rounded-full bg-[#E00420] flex items-center justify-center text-white text-sm font-medium">
-            {role.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#DFE2E4] truncate">
-              {role === 'department-manager' && 'Department Manager'}
-              {role === 'procurement-manager' && 'Procurement Manager'}
-              {role === 'cfo' && 'CFO / Procurement Head'}
-            </p>
-              <p className="text-xs text-[#B6BBBE] truncate">Active User</p>
+        <div className={cn("transition-all duration-300", isExpanded ? "p-4" : "p-2")}>
+          <div className={cn("flex items-center mb-3", isExpanded ? "gap-3" : "justify-center")}>
+            <div className="h-8 w-8 rounded-full bg-[#E00420] flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+              {role.charAt(0).toUpperCase()}
+            </div>
+            <div className={cn(
+              "transition-all duration-300",
+              isExpanded ? "flex-1 min-w-0 opacity-100 max-w-xs" : "opacity-0 max-w-0 overflow-hidden"
+            )}>
+              <p className="text-sm font-medium text-[#DFE2E4] truncate whitespace-nowrap">
+                {role === 'department-manager' && 'Department Manager'}
+                {role === 'procurement-manager' && 'Procurement Manager'}
+                {role === 'cfo' && 'CFO / Procurement Head'}
+              </p>
+              <p className="text-xs text-[#B6BBBE] truncate whitespace-nowrap">Active User</p>
             </div>
           </div>
           <Link
             href="/"
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[#DFE2E4] hover:bg-[#9DA5A8]/20 transition-colors border border-[#B6BBBE]"
+            className={cn(
+              "w-full flex items-center rounded-lg text-sm font-medium text-[#DFE2E4] hover:bg-[#9DA5A8]/20 transition-all duration-200 border border-[#B6BBBE]",
+              isExpanded ? "gap-2 px-3 py-2" : "justify-center px-2 py-2"
+            )}
+            title={!isExpanded ? "Back" : undefined}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back
+            <span className={cn(
+              "transition-all duration-300 whitespace-nowrap",
+              isExpanded ? "opacity-100 max-w-xs" : "opacity-0 max-w-0 overflow-hidden"
+            )}>
+              Back
+            </span>
           </Link>
         </div>
       </div>

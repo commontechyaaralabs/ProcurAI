@@ -1,14 +1,19 @@
 'use client';
 
 import { Bell, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TopBarProps {
   title?: string;
+  isSidebarExpanded?: boolean;
 }
 
-export function TopBar({ title }: TopBarProps) {
+export function TopBar({ title, isSidebarExpanded = false }: TopBarProps) {
   return (
-    <div className="h-16 bg-gradient-to-r from-[#31343A] via-[#2a2d33] to-[#31343A] border-b border-[#9DA5A8] flex items-center justify-between px-5 fixed top-0 right-0 left-64 z-10">
+    <div className={cn(
+      "h-16 bg-gradient-to-r from-[#31343A] via-[#2a2d33] to-[#31343A] border-b border-[#9DA5A8] flex items-center justify-between px-5 fixed top-0 right-0 z-10 transition-all duration-300",
+      isSidebarExpanded ? "left-64" : "left-20"
+    )}>
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
           <h2 className="text-lg font-semibold text-white leading-tight">{title || 'Dashboard'}</h2>

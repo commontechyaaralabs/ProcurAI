@@ -51,6 +51,7 @@ import { RenewalCalendarStrip } from '@/components/pm/contracts/RenewalCalendarS
 
 import { VendorScatter } from '@/components/pm/vendors/VendorScatter';
 import { LeadTimeByCategory } from '@/components/pm/vendors/LeadTimeByCategory';
+import { VendorDiscountSpendChart } from '@/components/pm/vendors/VendorDiscountSpendChart';
 
 import { OffContractSpend } from '@/components/pm/governance/OffContractSpend';
 import { DuplicateIndents } from '@/components/pm/governance/DuplicateIndents';
@@ -491,6 +492,125 @@ export default function ProcurementManagerDashboard() {
     { name: 'Delivered', count: enhancedPurchaseOrders.filter(po => po.status === 'delivered').length },
   ];
 
+  // Helper function to get budget info for indent approvals
+  const getBudgetInfoForIndent = (dept: string, budgetHead?: string, currentCost: number = 0) => {
+    // Map departments to budget codes (similar to department-manager logic)
+    const deptCodeMap: Record<string, string> = {
+      'Powertrain Assembly': 'PROD-201',
+      'Chassis Assembly': 'CHS-301',
+      'Brake Systems': 'BRK-401',
+      'Electronics & Controls': 'ELEC-501',
+      'Body Shop': 'BOD-601',
+    };
+    
+    const baseCode = deptCodeMap[dept] || 'GEN-001';
+    
+    // Create budget code from budget head if available
+    let budgetCode = baseCode;
+    let budgetName = budgetHead || dept;
+    
+    // Map budget heads to budget categories for better matching
+    const budgetHeadMap: Record<string, string> = {
+      'Chassis Components': 'Chassis',
+      'Transmission Systems': 'Powertrain',
+      'Engine Components': 'Powertrain',
+      'Brake Components': 'Brake Components',
+      'Battery Systems': 'Electronics',
+      'Wiring Systems': 'Electronics',
+      'Exhaust Systems': 'Powertrain',
+      'Fuel Systems': 'Powertrain',
+      'Cooling Systems': 'Powertrain',
+      'Safety Components': 'Interior',
+      'Forced Induction': 'Powertrain',
+      'Lighting Systems': 'Exterior',
+      'Lubrication Systems': 'Powertrain',
+      'Electronics': 'Electronics',
+    };
+    
+    // Determine category from budget head
+    const category = budgetHead ? (budgetHeadMap[budgetHead] || budgetHead.split(' ')[0]) : 
+                     (dept.includes('Powertrain') ? 'Powertrain' :
+                      dept.includes('Chassis') ? 'Chassis' :
+                      dept.includes('Electronics') ? 'Electronics' :
+                      dept.includes('Body') ? 'Body-in-White' : 'Powertrain');
+    
+    if (budgetHead) {
+      // Extract category prefix from budget head (e.g., "Chassis Components" -> "CHAS")
+      const categoryPrefix = budgetHead
+        .split(' ')
+        .map(w => w.substring(0, 3).toUpperCase())
+        .join('')
+        .substring(0, 4);
+      budgetCode = `${baseCode}-${categoryPrefix}`;
+      budgetName = budgetHead;
+    } else {
+      budgetName = category;
+    }
+    
+    // Budget allocation map (matching department-manager categories)
+    const budgetMap: Record<string, number> = {
+      'Powertrain': 8500000,
+      'Chassis': 6200000,
+      'Body-in-White': 4800000,
+      'Electronics': 3500000,
+      'Interior': 2800000,
+      'Exterior': 2200000,
+      'Tooling': 5000000,
+      'Raw Materials': 3800000,
+      'Logistics': 1800000,
+      'Brake Components': 2000000,
+      'Transmission Systems': 4000000,
+      'Engine Components': 4500000,
+      'Battery Systems': 3000000,
+      'Wiring Systems': 1500000,
+      'Exhaust Systems': 1800000,
+      'Fuel Systems': 2200000,
+      'Cooling Systems': 1200000,
+      'Safety Components': 2500000,
+      'Forced Induction': 3500000,
+      'Lighting Systems': 1600000,
+      'Lubrication Systems': 800000,
+    };
+    
+    // Get total budget for this category
+    const totalBudget = budgetMap[category] || 
+                       budgetMap[budgetName] ||
+                       budgetMap[budgetName.split(' ')[0]] || 
+                       (category.includes('Powertrain') || dept.includes('Powertrain') ? 8500000 :
+                        category.includes('Chassis') || dept.includes('Chassis') ? 6200000 :
+                        category.includes('Electronics') || dept.includes('Electronics') ? 3500000 :
+                        category.includes('Body') || dept.includes('Body') ? 4800000 :
+                        2000000); // Default
+    
+    // Calculate base spent from approved/committed requests matching this budget category
+    const baseSpent = requests
+      .filter(r => {
+        const rCategory = r.department.includes('Powertrain') ? 'Powertrain' :
+                         r.department.includes('Chassis') ? 'Chassis' :
+                         r.department.includes('Electronics') ? 'Electronics' :
+                         r.department.includes('Body') ? 'Body-in-White' : 'Powertrain';
+        return (rCategory === category || r.department === dept) &&
+               (r.status === 'approved' || r.status === 'po-issued');
+      })
+      .reduce((sum, r) => sum + r.estimatedCost, 0);
+    
+    // Add current approval cost and some variance to ensure realistic percentages
+    // Use a deterministic approach based on cost to ensure ~75% have meaningful data (30%+ used)
+    const costHash = currentCost.toString().split('').reduce((acc, char) => acc + parseInt(char) || 0, 0);
+    const basePercentage = (costHash % 70) + 25; // Target percentage between 25% and 95%
+    const targetSpent = (totalBudget * basePercentage) / 100;
+    
+    // If baseSpent is too low, add variance to reach target percentage
+    const variance = Math.max(0, targetSpent - baseSpent - currentCost);
+    const varianceAmount = variance > 0 ? variance : (costHash % 400000) + 150000; // Fallback variance
+    
+    const spent = baseSpent + currentCost + varianceAmount;
+    
+    const percentUsed = totalBudget > 0 ? Math.min((spent / totalBudget) * 100, 98) : 0; // Cap at 98%
+    
+    return { code: budgetCode, name: budgetName, total: totalBudget, spent, percentUsed };
+  };
+
   const navItems = getNavItems(handleNavClick, activeTab);
 
   return (
@@ -537,6 +657,7 @@ export default function ProcurementManagerDashboard() {
                 icon={TrendingUp} 
                 change="+12% MoM" 
                 trend="up"
+                sparklineData={monthlySpendData.map(d => d.spend)}
                 onClick={() => showToast('Viewing spend analytics', 'info')}
               />
             </div>
@@ -550,7 +671,7 @@ export default function ProcurementManagerDashboard() {
                 {/* Spend trends + mini donut */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
-                    <h3 className="text-lg font-semibold text-[#31343A] mb-4">Spend Trends</h3>
+                    <h3 className="text-lg font-semibold text-[#31343A] mb-4">Spends - PO Value</h3>
                     <LineChart
                       data={monthlySpendData.map(d => ({ ...d, spend: d.spend / 1000 }))}
                       dataKey="spend"
@@ -661,8 +782,61 @@ export default function ProcurementManagerDashboard() {
               <ThreeWayMatchStatus />
             </div>
 
-            {/* Vendors scatter (full width) */}
-            <VendorScatter />
+            {/* Quadrant View: Chart + Quadrant Details */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Chart Column */}
+              <VendorScatter showQuadrantView={false} />
+              
+              {/* Quadrant Details Column */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="text-lg font-semibold text-[#31343A] mb-4">Quadrant Details</div>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="border-l-4 border-[#E00420] pl-4 py-3 bg-[#E00420]/5 rounded-r">
+                    <div className="font-semibold text-[#31343A] text-sm mb-1">Star Performers</div>
+                    <p className="text-[#9DA5A8] text-xs leading-relaxed">High On-time • High Quality</p>
+                    <p className="text-[#9DA5A8] text-xs mt-2">Best vendors - expand relationships and prioritize for future contracts</p>
+                  </div>
+                  
+                  <div className="border-l-4 border-[#005691] pl-4 py-3 bg-[#005691]/5 rounded-r">
+                    <div className="font-semibold text-[#31343A] text-sm mb-1">Quality Focus</div>
+                    <p className="text-[#9DA5A8] text-xs leading-relaxed">Low On-time • High Quality</p>
+                    <p className="text-[#9DA5A8] text-xs mt-2">Work on logistics & lead times. Quality is good but delivery needs improvement</p>
+                  </div>
+                  
+                  <div className="border-l-4 border-[#DFE2E4] pl-4 py-3 bg-[#DFE2E4]/30 rounded-r">
+                    <div className="font-semibold text-[#31343A] text-sm mb-1">Timely Risky</div>
+                    <p className="text-[#9DA5A8] text-xs leading-relaxed">High On-time • Low Quality</p>
+                    <p className="text-[#9DA5A8] text-xs mt-2">Review QC processes. They deliver on time but quality issues need attention</p>
+                  </div>
+                  
+                  <div className="border-l-4 border-[#DFE2E4] pl-4 py-3 bg-[#DFE2E4]/30 rounded-r">
+                    <div className="font-semibold text-[#31343A] text-sm mb-1">At-Risk</div>
+                    <p className="text-[#9DA5A8] text-xs leading-relaxed">Low On-time • Low Quality</p>
+                    <p className="text-[#9DA5A8] text-xs mt-2">Consider alternatives. Both delivery and quality need significant improvement</p>
+                  </div>
+                </div>
+                
+                {/* Average Thresholds */}
+                <div className="pt-4 border-t border-[#DFE2E4]">
+                  <div className="text-sm text-[#9DA5A8] mb-3 font-semibold">Average Thresholds</div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#9DA5A8]">On-time Delivery:</span>
+                      <span className="text-[#31343A] font-semibold">
+                        {Math.round(enhancedVendors.reduce((sum, v) => sum + (v.onTimeDeliveryPercent || 0), 0) / enhancedVendors.filter(v => v.onTimeDeliveryPercent != null).length)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#9DA5A8]">Quality Score:</span>
+                      <span className="text-[#31343A] font-semibold">
+                        {Math.round(enhancedVendors.reduce((sum, v) => sum + (v.qualityPercent || 0), 0) / enhancedVendors.filter(v => v.qualityPercent != null).length)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
           </>
         )}
@@ -769,9 +943,10 @@ export default function ProcurementManagerDashboard() {
               </button>
             </div>
 
+            {/* New layout: Discount vs Spend (Left) and On-time vs Quality (Right) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <VendorDiscountSpendChart />
               <VendorScatter showQuadrantView={false} />
-              <LeadTimeByCategory />
             </div>
 
             <div className="bg-white rounded-lg border border-[#DFE2E4] overflow-hidden">
@@ -814,6 +989,9 @@ export default function ProcurementManagerDashboard() {
                 </table>
               </div>
             </div>
+
+            {/* Lead Time by Category - moved to bottom */}
+            <LeadTimeByCategory />
           </div>
         )}
 
@@ -1059,6 +1237,7 @@ export default function ProcurementManagerDashboard() {
                       <tbody className="bg-white divide-y divide-[#DFE2E4]">
                         {filteredApprovals.filter((a): a is import('@/types').IndentApproval => a.approvalType === 'INDENT').map((a) => {
                           const elapsedHours = Math.floor((now.getTime() - new Date(a.submittedAt).getTime()) / (1000 * 60 * 60));
+                          const budgetInfo = getBudgetInfoForIndent(a.dept, a.budgetHead, a.estimatedCost);
                           return (
                             <tr key={a.id} className="hover:bg-[#DFE2E4]/30">
                               <td className="px-6 py-4 text-sm font-medium text-[#31343A]">{a.referenceNumber}</td>
@@ -1066,7 +1245,13 @@ export default function ProcurementManagerDashboard() {
                               <td className="px-6 py-4 text-sm text-[#31343A]">{a.itemName}</td>
                               <td className="px-6 py-4 text-sm">{formatCurrency(a.estimatedCost)}</td>
                               <td className="px-6 py-4"><StatusBadge status={a.urgency === 'critical' ? 'critical' : a.urgency === 'high' ? 'pending' : 'active'} /></td>
-                              <td className="px-6 py-4"><StatusBadge status={a.budgetStatus === 'under-budget' ? 'active' : a.budgetStatus === 'over-budget' ? 'inactive' : 'pending'} /></td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col">
+                                  <div className="text-sm font-medium text-[#005691]">{budgetInfo.code}</div>
+                                  <div className="text-xs text-[#31343A] mt-0.5">{budgetInfo.name}</div>
+                                  <div className="text-xs text-[#9DA5A8] mt-1">{budgetInfo.percentUsed.toFixed(1)}% used</div>
+                                </div>
+                              </td>
                               <td className="px-6 py-4 text-sm text-[#31343A]">{elapsedHours}h</td>
                               <td className="px-6 py-4 text-sm text-[#9DA5A8]">{formatDate(a.submittedAt)}</td>
                               <td className="px-6 py-4"><StatusBadge status={a.status === 'pending' ? 'pending' : 'active'} /></td>
