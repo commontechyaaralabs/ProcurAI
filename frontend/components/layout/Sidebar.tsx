@@ -67,13 +67,16 @@ export function Sidebar({ navItems, role, isExpanded, onExpandChange }: SidebarP
           if (item.isActive !== undefined) {
             isActive = item.isActive;
           } else if (item.href === '/procurement-manager') {
-            isActive = pathname === '/procurement-manager';
+            isActive = pathname === '/procurement-manager' || pathname === '/procurement-manager/';
           } else if (item.href === '/department-manager') {
             // For base route, only match if pathname is exactly '/department-manager' or '/department-manager/'
             isActive = pathname === '/department-manager' || pathname === '/department-manager/';
+          } else if (item.href === '/cfo') {
+            // For CFO base route, only match exactly '/cfo' or '/cfo/', not nested routes
+            isActive = pathname === '/cfo' || pathname === '/cfo/';
           } else {
             // For other routes, check exact match or if pathname starts with the href (for nested routes)
-            isActive = pathname === item.href || pathname?.startsWith(item.href + '/') || pathname === item.href + '/';
+            isActive = pathname === item.href || (pathname?.startsWith(item.href + '/') && pathname !== item.href + '/') || pathname === item.href + '/';
           }
           
           const content = (

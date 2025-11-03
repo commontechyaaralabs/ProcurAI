@@ -1362,116 +1362,6 @@ export default function CFODashboard() {
               <KPICard title="Avg Performance" value="4.3/5" />
             </div>
 
-            {/* Vendor Efficiency Matrix */}
-            <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-[#31343A] mb-1">Vendor Efficiency Matrix</h3>
-                  <p className="text-sm text-[#9DA5A8]">Cost vs. Delivery Performance Analysis</p>
-                </div>
-                <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
-                  <Download className="h-4 w-4" />
-                </button>
-              </div>
-              <ResponsiveContainer width="100%" height={500}>
-                <ScatterChart
-                  margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
-                  <XAxis
-                    type="number"
-                    dataKey="costEfficiency"
-                    name="Cost Efficiency"
-                    unit=""
-                    domain={[0, 100]}
-                    tick={{ fill: '#9DA5A8', fontSize: 12 }}
-                    label={{ value: 'Cost Efficiency (Higher = Better)', position: 'insideBottom', offset: -5, style: { fill: '#9DA5A8', fontSize: 12 } }}
-                  />
-                  <YAxis
-                    type="number"
-                    dataKey="deliveryPerformance"
-                    name="Delivery Performance"
-                    unit="%"
-                    domain={[0, 100]}
-                    tick={{ fill: '#9DA5A8', fontSize: 12 }}
-                    label={{ value: 'Delivery Performance (%)', angle: -90, position: 'insideLeft', style: { fill: '#9DA5A8', fontSize: 12 } }}
-                  />
-                  <Tooltip
-                    cursor={{ strokeDasharray: '3 3' }}
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #DFE2E4', borderRadius: '6px' }}
-                    formatter={(value: number, name: string, props: any) => {
-                      if (name === 'costEfficiency') return [`${value.toFixed(1)}`, 'Cost Efficiency'];
-                      if (name === 'deliveryPerformance') return [`${value.toFixed(1)}%`, 'Delivery Performance'];
-                      return [value, name];
-                    }}
-                    labelFormatter={(label, payload) => {
-                      if (payload && payload[0] && payload[0].payload) {
-                        return `${payload[0].payload.vendor}`;
-                      }
-                      return '';
-                    }}
-                  />
-                  <ReferenceLine x={70} stroke="#E00420" strokeDasharray="3 3" label={{ value: "Avg Cost", position: "top", fill: '#E00420', fontSize: 11 }} />
-                  <ReferenceLine y={85} stroke="#E00420" strokeDasharray="3 3" label={{ value: "Avg Delivery", position: "right", fill: '#E00420', fontSize: 11 }} />
-                  <Scatter
-                    name="Vendors"
-                    data={[
-                      { costEfficiency: 85, deliveryPerformance: 92, vendor: 'SKF Automotive', spend: 18500000, size: 180 },
-                      { costEfficiency: 78, deliveryPerformance: 88, vendor: 'ArcelorMittal', spend: 15200000, size: 152 },
-                      { costEfficiency: 82, deliveryPerformance: 85, vendor: 'Bosch Electronics', spend: 12800000, size: 128 },
-                      { costEfficiency: 75, deliveryPerformance: 90, vendor: 'TechCorp', spend: 9800000, size: 98 },
-                      { costEfficiency: 88, deliveryPerformance: 78, vendor: 'Logistics Pro', spend: 7500000, size: 75 },
-                      { costEfficiency: 72, deliveryPerformance: 95, vendor: 'Quality Parts Co', spend: 6200000, size: 62 },
-                      { costEfficiency: 65, deliveryPerformance: 82, vendor: 'Global Supplies', spend: 5400000, size: 54 },
-                      { costEfficiency: 90, deliveryPerformance: 72, vendor: 'Budget Solutions', spend: 4800000, size: 48 },
-                      { costEfficiency: 58, deliveryPerformance: 88, vendor: 'Premium Vendors', spend: 4200000, size: 42 },
-                      { costEfficiency: 82, deliveryPerformance: 80, vendor: 'Reliable Source', spend: 3800000, size: 38 },
-                      { costEfficiency: 68, deliveryPerformance: 75, vendor: 'Standard Parts', spend: 3200000, size: 32 },
-                      { costEfficiency: 55, deliveryPerformance: 68, vendor: 'Economy Suppliers', spend: 2800000, size: 28 },
-                    ]}
-                    fill="#005691"
-                  >
-                    {[
-                      { costEfficiency: 85, deliveryPerformance: 92, vendor: 'SKF Automotive', spend: 18500000, size: 180, color: '#005691' },
-                      { costEfficiency: 78, deliveryPerformance: 88, vendor: 'ArcelorMittal', spend: 15200000, size: 152, color: '#0066a3' },
-                      { costEfficiency: 82, deliveryPerformance: 85, vendor: 'Bosch Electronics', spend: 12800000, size: 128, color: '#005691' },
-                      { costEfficiency: 75, deliveryPerformance: 90, vendor: 'TechCorp', spend: 9800000, size: 98, color: '#0066a3' },
-                      { costEfficiency: 88, deliveryPerformance: 78, vendor: 'Logistics Pro', spend: 7500000, size: 75, color: '#005691' },
-                      { costEfficiency: 72, deliveryPerformance: 95, vendor: 'Quality Parts Co', spend: 6200000, size: 62, color: '#0066a3' },
-                      { costEfficiency: 65, deliveryPerformance: 82, vendor: 'Global Supplies', spend: 5400000, size: 54, color: '#E00420' },
-                      { costEfficiency: 90, deliveryPerformance: 72, vendor: 'Budget Solutions', spend: 4800000, size: 48, color: '#005691' },
-                      { costEfficiency: 58, deliveryPerformance: 88, vendor: 'Premium Vendors', spend: 4200000, size: 42, color: '#4A4E56' },
-                      { costEfficiency: 82, deliveryPerformance: 80, vendor: 'Reliable Source', spend: 3800000, size: 38, color: '#005691' },
-                      { costEfficiency: 68, deliveryPerformance: 75, vendor: 'Standard Parts', spend: 3200000, size: 32, color: '#E00420' },
-                      { costEfficiency: 55, deliveryPerformance: 68, vendor: 'Economy Suppliers', spend: 2800000, size: 28, color: '#E00420' },
-                    ].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Scatter>
-                  <Legend />
-                </ScatterChart>
-              </ResponsiveContainer>
-              {/* Quadrant Labels */}
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#DFE2E4]">
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-xs font-semibold text-green-700 mb-1">⭐ Champions (Top-Right)</p>
-                  <p className="text-xs text-green-600">High cost efficiency, excellent delivery</p>
-                </div>
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-xs font-semibold text-amber-700 mb-1">💰 Cost Leaders (Top-Left)</p>
-                  <p className="text-xs text-amber-600">High cost efficiency, delivery improvement needed</p>
-                </div>
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs font-semibold text-blue-700 mb-1">⚡ Delivery Stars (Bottom-Right)</p>
-                  <p className="text-xs text-blue-600">Excellent delivery, cost optimization needed</p>
-                </div>
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-xs font-semibold text-red-700 mb-1">⚠️ Underperformers (Bottom-Left)</p>
-                  <p className="text-xs text-red-600">Need improvement in both areas</p>
-                </div>
-              </div>
-            </div>
-
             {/* Top Performing Vendors */}
             <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
               <h3 className="text-lg font-semibold text-[#31343A] mb-4">Top Performing Vendors</h3>
@@ -1671,10 +1561,239 @@ export default function CFODashboard() {
         )}
 
         {activeView === 'insights' && (
-          <div className="space-y-6">
+          <div className="space-y-6" id="strategic-insights-report">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-[#31343A]">Strategic Insights</h2>
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#005691] text-white rounded-lg hover:bg-[#004574] transition-colors">
+              <button 
+                onClick={async () => {
+                  try {
+                    const { jsPDF } = await import('jspdf');
+                    const doc = new jsPDF('p', 'mm', 'a4');
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    let yPos = 20;
+                    
+                    // Add header
+                    doc.setFillColor(49, 52, 58); // #31343A
+                    doc.rect(0, 0, pageWidth, 30, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(20);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Strategic Insights Report', pageWidth / 2, 20, { align: 'center' });
+                    
+                    const date = new Date().toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    });
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`Generated on: ${date}`, pageWidth / 2, 27, { align: 'center' });
+                    
+                    yPos = 40;
+                    doc.setTextColor(0, 0, 0);
+                    
+                    // AI-Powered Insights Section
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFillColor(224, 4, 32); // #E00420
+                    doc.rect(10, yPos - 5, pageWidth - 20, 8, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.text('AI-Powered Predictive Analysis', 15, yPos + 2);
+                    yPos += 15;
+                    
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Advanced analytics for next-quarter procurement needs and optimization opportunities', 15, yPos);
+                    yPos += 10;
+                    
+                    // Metrics
+                    doc.setFontSize(12);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Predicted Q1 2025 Spend:', 15, yPos);
+                    doc.text(formatCurrency(3200000), 100, yPos);
+                    yPos += 8;
+                    
+                    doc.text('Optimization Potential:', 15, yPos);
+                    doc.text(formatCurrency(770000), 100, yPos);
+                    yPos += 8;
+                    
+                    doc.text('Risk Level:', 15, yPos);
+                    doc.text('Medium (2 high-risk vendor contracts)', 100, yPos);
+                    yPos += 15;
+                    
+                    // Spend Pattern Insights
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFillColor(49, 52, 58);
+                    doc.rect(10, yPos - 5, pageWidth - 20, 8, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.text('Spend Pattern Insights', 15, yPos + 2);
+                    yPos += 15;
+                    
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Q4 Software Category Increase', 15, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    const softwareText = '15% increase in software category spend detected. This trend is expected to continue.';
+                    const softwareLines = doc.splitTextToSize(softwareText, pageWidth - 30);
+                    doc.text(softwareLines, 15, yPos);
+                    yPos += softwareLines.length * 5 + 5;
+                    doc.text(`Recommendation: Consider multi-year licensing agreements for cost optimization (potential savings: ${formatCurrency(450000)})`, 15, yPos, { maxWidth: pageWidth - 30 });
+                    yPos += 12;
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Logistics Cost Trend', 15, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Logistics costs trending upward (+8% month-over-month). Evaluate consolidation opportunities.', 15, yPos, { maxWidth: pageWidth - 30 });
+                    yPos += 8;
+                    doc.text('Recommendation: Consolidate with top 3 vendors for better negotiation leverage', 15, yPos, { maxWidth: pageWidth - 30 });
+                    yPos += 12;
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Manufacturing Efficiency', 15, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Manufacturing department consistently operating under budget (-7% average variance).', 15, yPos, { maxWidth: pageWidth - 30 });
+                    yPos += 8;
+                    doc.text('Recommendation: Consider allocating saved budget to critical infrastructure upgrades', 15, yPos, { maxWidth: pageWidth - 30 });
+                    yPos += 15;
+                    
+                    // Check if we need a new page
+                    if (yPos > pageHeight - 40) {
+                      doc.addPage();
+                      yPos = 20;
+                    }
+                    
+                    // Procurement Efficiency Metrics
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFillColor(49, 52, 58);
+                    doc.rect(10, yPos - 5, pageWidth - 20, 8, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.text('Procurement Efficiency Metrics', 15, yPos + 2);
+                    yPos += 15;
+                    
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Average Time-to-PO: 5.2 days (↓ 0.8 days vs last quarter)', 15, yPos);
+                    yPos += 8;
+                    doc.text('Approval Cycle Time: 2.4 days (↓ 1.2 days vs last quarter)', 15, yPos);
+                    yPos += 8;
+                    doc.text('Vendor Onboarding Time: 12 days (+2 days vs last quarter)', 15, yPos);
+                    yPos += 15;
+                    
+                    if (yPos > pageHeight - 40) {
+                      doc.addPage();
+                      yPos = 20;
+                    }
+                    
+                    // Risk Indicators
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFillColor(49, 52, 58);
+                    doc.rect(10, yPos - 5, pageWidth - 20, 8, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.text('Risk Indicators & Opportunities', 15, yPos + 2);
+                    yPos += 15;
+                    
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('High-Risk Areas:', 15, yPos);
+                    yPos += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.text('• High-risk vendors: 2', 20, yPos);
+                    yPos += 6;
+                    doc.text('• Delayed deliveries: 5', 20, yPos);
+                    yPos += 6;
+                    doc.text('• Contracts expiring soon: 7', 20, yPos);
+                    yPos += 10;
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Opportunities:', 15, yPos);
+                    yPos += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`• Cost optimization potential: ${formatCurrency(770000)}`, 20, yPos);
+                    yPos += 6;
+                    doc.text('• Vendor consolidation: 3 vendors', 20, yPos);
+                    yPos += 6;
+                    doc.text('• Process improvement: On track', 20, yPos);
+                    yPos += 15;
+                    
+                    if (yPos > pageHeight - 40) {
+                      doc.addPage();
+                      yPos = 20;
+                    }
+                    
+                    // Predictive Analysis
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFillColor(224, 4, 32);
+                    doc.rect(10, yPos - 5, pageWidth - 20, 8, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.text('Predictive Analysis for Next Quarter', 15, yPos + 2);
+                    yPos += 15;
+                    
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Expected Procurement Volume:', 15, yPos);
+                    yPos += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.text(`• Raw Materials: ${formatCurrency(1150000)}`, 20, yPos);
+                    yPos += 6;
+                    doc.text(`• Software: ${formatCurrency(850000)}`, 20, yPos);
+                    yPos += 6;
+                    doc.text(`• Equipment: ${formatCurrency(650000)}`, 20, yPos);
+                    yPos += 6;
+                    doc.text(`• Services: ${formatCurrency(550000)}`, 20, yPos);
+                    yPos += 10;
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Recommended Actions:', 15, yPos);
+                    yPos += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('• Initiate contract renewal discussions with 3 high-value vendors', 20, yPos, { maxWidth: pageWidth - 40 });
+                    yPos += 6;
+                    doc.text('• Review and optimize software licensing agreements', 20, yPos, { maxWidth: pageWidth - 40 });
+                    yPos += 6;
+                    doc.text('• Consider bulk purchasing for raw materials Q1 2025', 20, yPos, { maxWidth: pageWidth - 40 });
+                    yPos += 6;
+                    doc.text('• Evaluate new vendor partnerships for logistics consolidation', 20, yPos, { maxWidth: pageWidth - 40 });
+                    
+                    // Footer
+                    const totalPages = doc.internal.pages.length - 1; // Subtract 1 because pages array is 0-indexed internally
+                    for (let i = 1; i <= totalPages; i++) {
+                      doc.setPage(i);
+                      doc.setFontSize(8);
+                      doc.setTextColor(128, 128, 128);
+                      doc.text(
+                        `Page ${i} of ${totalPages} | ProcurAI Strategic Insights Report`,
+                        pageWidth / 2,
+                        pageHeight - 10,
+                        { align: 'center' }
+                      );
+                    }
+                    
+                    // Save the PDF
+                    const fileName = `Strategic_Insights_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+                    doc.save(fileName);
+                  } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    alert('Failed to generate PDF. Please try again.');
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-[#005691] text-white rounded-lg hover:bg-[#004574] transition-colors"
+              >
                 <FileDown className="h-4 w-4" />
                 Export Report
               </button>
