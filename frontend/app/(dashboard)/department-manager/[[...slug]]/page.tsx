@@ -568,22 +568,87 @@ export default function DepartmentManagerPage() {
     console.log('Unhandled action:', actionLabel);
   };
 
+  // Enhance requests with dynamically calculated budget status first
+  const requestsWithDynamicBudgetStatus = useMemo(() => {
+    // Calculate current committed and allocated budget
+    const currentCommitted = allRequests.filter(r => r.status === 'approved' || r.status === 'po-issued').reduce((a, b) => a + b.estimatedCost, 0);
+    const currentAllocatedBudget = 2000000;
+    const isDepartmentOverBudget = currentCommitted > currentAllocatedBudget;
+    const remainingBudget = currentAllocatedBudget - currentCommitted;
+
+    // Helper to calculate category budget info
+    const getCategoryBudgetInfoLocal = (category: string | undefined) => {
+      if (!category) return { code: DEPARTMENT_BUDGET_CODE, total: currentAllocatedBudget, spent: 0 };
+      const budgetMap: Record<string, number> = {
+        'Powertrain': 8500000,
+        'Chassis': 6200000,
+        'Body-in-White': 4800000,
+        'Electronics': 3500000,
+        'Interior': 2800000,
+        'Exterior': 2200000,
+        'Tooling': 5000000,
+        'Raw Materials': 3800000,
+        'Logistics': 1800000,
+      };
+      const total = budgetMap[category] || currentAllocatedBudget;
+      const spent = allRequests
+        .filter(r => r.category === category && (r.status === 'approved' || r.status === 'po-issued'))
+        .reduce((sum, r) => sum + r.estimatedCost, 0);
+      return { code: DEPARTMENT_BUDGET_CODE, total, spent };
+    };
+
+    return allRequests.map((request: ExtendedRequest) => {
+      // For pending/in-review requests, calculate dynamic budget status
+      if (request.status === 'pending' || request.status === 'in-review') {
+        // Check category-level budget if available
+        let calculatedStatus: 'under-budget' | 'over-budget' | 'pending-allocation' = 'under-budget';
+        
+        if (request.category) {
+          const categoryInfo = getCategoryBudgetInfoLocal(request.category);
+          const categoryAvailable = categoryInfo.total - categoryInfo.spent;
+          
+          if (request.estimatedCost > categoryAvailable) {
+            calculatedStatus = 'over-budget';
+          } else if (categoryInfo.spent > categoryInfo.total * 0.9) {
+            calculatedStatus = request.estimatedCost > categoryAvailable ? 'over-budget' : 'pending-allocation';
+          }
+        }
+        
+        // Department-level check (only if category check didn't already set it)
+        if (calculatedStatus === 'under-budget') {
+          if (isDepartmentOverBudget) {
+            calculatedStatus = request.estimatedCost > Math.abs(remainingBudget) ? 'over-budget' : 'pending-allocation';
+          } else if (request.estimatedCost > remainingBudget) {
+            calculatedStatus = 'over-budget';
+          } else if (remainingBudget < currentAllocatedBudget * 0.1) {
+            calculatedStatus = 'pending-allocation';
+          }
+        }
+
+        return { ...request, budgetStatus: calculatedStatus };
+      }
+      
+      // For approved/po-issued requests, keep original status (already committed)
+      return request;
+    });
+  }, [allRequests]);
+
   // Filter requests for Request Approval (pending/in-review from team)
   // Match department name or allow all for demo purposes
   const requestsPendingApproval = useMemo(() => {
-    return allRequests.filter(request => 
+    return requestsWithDynamicBudgetStatus.filter(request => 
       (request.status === 'pending' || request.status === 'in-review') &&
       (DEPARTMENT_ALIASES.includes(request.department) || request.department === DEPARTMENT_NAME)
     );
-  }, [allRequests]);
+  }, [requestsWithDynamicBudgetStatus]);
 
   // Filter requests for PO Approval
   const requestsPendingPOApproval = useMemo(() => {
-    return allRequests.filter(request => 
+    return requestsWithDynamicBudgetStatus.filter(request => 
       request.status === 'approved' && 
       (DEPARTMENT_ALIASES.includes(request.department) || request.department === DEPARTMENT_NAME)
     );
-  }, [allRequests]);
+  }, [requestsWithDynamicBudgetStatus]);
 
   // Filter notifications (always calculate, not conditionally)
   const filteredNotifications = useMemo(() => {
@@ -760,9 +825,9 @@ export default function DepartmentManagerPage() {
   const committed = allRequests.filter(r => r.status === 'approved' || r.status === 'po-issued').reduce((a, b) => a + b.estimatedCost, 0);
   const pendingValue = allRequests.filter(r => r.status === 'pending' || r.status === 'in-review').reduce((a, b) => a + b.estimatedCost, 0);
   const available = allocatedBudget - committed;
-  const overBudgetCount = allRequests.filter(r => r.budgetStatus === 'over-budget').length;
-  const underBudgetCount = allRequests.filter(r => r.budgetStatus === 'under-budget').length;
-  const onBudgetCount = allRequests.filter(r => r.budgetStatus !== 'over-budget' && r.budgetStatus !== 'under-budget').length;
+  const overBudgetCount = requestsWithDynamicBudgetStatus.filter(r => r.budgetStatus === 'over-budget').length;
+  const underBudgetCount = requestsWithDynamicBudgetStatus.filter(r => r.budgetStatus === 'under-budget').length;
+  const onBudgetCount = requestsWithDynamicBudgetStatus.filter(r => r.budgetStatus !== 'over-budget' && r.budgetStatus !== 'under-budget').length;
   const totalIndents = allRequests.length;
   const approvedIndents = allRequests.filter(r => r.status === 'approved' || r.status === 'po-issued').length;
   const approvalRate = totalIndents > 0 ? ((approvedIndents / totalIndents) * 100).toFixed(1) : '0';

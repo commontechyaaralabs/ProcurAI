@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Users,
   FileText,
-  AlertCircle
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
 import {
   enhancedRequests,
@@ -31,6 +32,8 @@ import {
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { LineChart } from '@/components/charts/LineChart';
 import { BarChart } from '@/components/charts/BarChart';
+import { PieChart } from '@/components/charts/PieChart';
+import { AreaChart, Area, Bar, BarChart as RechartsBarChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Cell } from 'recharts';
 import { ActionQueueSidebar } from '@/components/pm/ActionQueueSidebar';
 import { PipelineFunnel } from '@/components/pm/PipelineFunnel';
 import { SuggestedVendorsPanel } from '@/components/pm/SuggestedVendorsPanel';
@@ -69,6 +72,39 @@ import { ApprovalFilters, FilterState } from '@/components/pm/approvals/Approval
 import { ApprovalDrawer } from '@/components/pm/approvals/ApprovalDrawer';
 import { SLAChip } from '@/components/pm/approvals/SLAChip';
 
+// Inline Sparkline component for KPI cards - aligned with progress bars at bottom
+function SparklineSvg({ data, color = '#0891b2' }: { data: number[]; color?: string }) {
+  if (!data || data.length === 0) return null;
+  
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const w = 140, h = 24, pad = 2; // Taller height to show variations, bottom-aligned
+  const step = data.length > 1 ? (w - pad * 2) / (data.length - 1) : 0;
+
+  const pts = data.map((v, i) => {
+    const x = pad + i * step;
+    // Normalize to show full range with some padding
+    const normalized = (v - min) / range;
+    const y = h - pad - (normalized * (h - pad * 2));
+    return `${x},${y}`;
+  }).join(' ');
+  
+  // Last point for the dot
+  const lastX = pad + (data.length - 1) * step;
+  const lastNormalized = (data[data.length - 1] - min) / range;
+  const lastY = h - pad - (lastNormalized * (h - pad * 2));
+
+  return (
+    <div className="w-full overflow-hidden h-6 flex items-end">
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="max-w-full" preserveAspectRatio="xMidYMid meet">
+        <polyline fill="none" stroke={color} strokeWidth="2" points={pts} />
+        <circle cx={lastX} cy={lastY} r="2.5" fill={color} />
+      </svg>
+    </div>
+  );
+}
+
 const getNavItems = (onClick: (href: string) => void, activeTab: string) => [
   { 
     label: 'Dashboard', 
@@ -106,6 +142,13 @@ const getNavItems = (onClick: (href: string) => void, activeTab: string) => [
     isActive: activeTab === 'orders'
   },
   { 
+    label: 'Cost Savings', 
+    href: '/procurement-manager/savings', 
+    icon: DollarSign, 
+    onClick: () => onClick('/procurement-manager/savings'),
+    isActive: activeTab === 'savings'
+  },
+  { 
     label: 'Approvals', 
     href: '/procurement-manager/approvals', 
     icon: CheckCircle2, 
@@ -115,7 +158,7 @@ const getNavItems = (onClick: (href: string) => void, activeTab: string) => [
 ];
 
 export default function ProcurementManagerDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'vendors' | 'contracts' | 'orders' | 'approvals'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'vendors' | 'contracts' | 'orders' | 'savings' | 'approvals'>('dashboard');
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [selectedPriority, setSelectedPriority] = useState<string>('All Priority');
@@ -701,46 +744,156 @@ export default function ProcurementManagerDashboard() {
       activeTab === 'vendors' ? 'Vendors' :
       activeTab === 'contracts' ? 'Contracts' :
       activeTab === 'orders' ? 'Orders' :
+      activeTab === 'savings' ? 'Cost Savings' :
       'Approvals'
     }>
       <div className="space-y-6">
         {activeTab === 'dashboard' && (
           <>
-            {/* KPI Cards — more operational */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              <KPICard 
-                title="Vendors" 
-                value={vendorsCount} 
-                icon={Users} 
+            {/* Enhanced KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              <div 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6 cursor-pointer hover:shadow-lg transition-all flex flex-col h-full"
                 onClick={() => { setActiveTab('vendors'); showToast('Opening Vendors tab', 'info'); }}
-              />
-              <KPICard 
-                title="Active Contracts" 
-                value={activeContracts} 
-                icon={FileContract} 
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-blue-800">Total Vendors</div>
+                  <Users className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="text-2xl font-bold text-blue-900 mb-1">{vendorsCount}</div>
+                <div className="text-xs text-blue-700 mb-4">Active vendor relationships</div>
+                <div className="mt-auto bg-blue-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 rounded-full h-2 transition-all" 
+                    style={{ width: `${Math.min((vendorsCount / 100) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div 
+                className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-6 cursor-pointer hover:shadow-lg transition-all flex flex-col h-full"
                 onClick={() => { setActiveTab('contracts'); showToast('Opening Contracts tab', 'info'); }}
-              />
-              <KPICard 
-                title="Pending POs" 
-                value={posPending} 
-                icon={ShoppingCart} 
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-green-800">Active Contracts</div>
+                  <FileContract className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="text-2xl font-bold text-green-900 mb-1">{activeContracts}</div>
+                <div className="text-xs text-green-700 mb-4">{expiringSoon} expiring within 30 days</div>
+                <div className="mt-auto bg-green-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 rounded-full h-2 transition-all" 
+                    style={{ width: `${Math.min((activeContracts / enhancedContracts.length) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div 
+                className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200 p-6 cursor-pointer hover:shadow-lg transition-all flex flex-col h-full"
                 onClick={() => { setActiveTab('orders'); showToast('Opening Orders tab', 'info'); }}
-              />
-              <KPICard 
-                title="Avg PO Age (days)" 
-                value={avgPOAge} 
-                icon={AlertCircle} 
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-orange-800">Pending POs</div>
+                  <ShoppingCart className="h-5 w-5 text-orange-600" />
+                </div>
+                <div className="text-2xl font-bold text-orange-900 mb-1">{posPending}</div>
+                <div className="text-xs text-orange-700 mb-4">Awaiting approval</div>
+                <div className="mt-auto bg-orange-200 rounded-full h-2">
+                  <div 
+                    className="bg-orange-600 rounded-full h-2 transition-all" 
+                    style={{ width: `${enhancedPurchaseOrders.length > 0 ? (posPending / enhancedPurchaseOrders.length) * 100 : 0}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div 
+                className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-6 cursor-pointer hover:shadow-lg transition-all flex flex-col h-full"
                 onClick={() => { setActiveTab('orders'); showToast('Viewing PO age details', 'info'); }}
-              />
-              <KPICard 
-                title="Avg Monthly Spend" 
-                value={formatCurrency(avgMonthlySpend)} 
-                icon={TrendingUp} 
-                change="+12% MoM" 
-                trend="up"
-                sparklineData={monthlySpendData.map(d => d.spend)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-purple-800">Avg PO Age</div>
+                  <AlertCircle className="h-5 w-5 text-purple-600" />
+                </div>
+                <div className="text-2xl font-bold text-purple-900 mb-1">{avgPOAge} days</div>
+                <div className="text-xs text-purple-700 mb-4">Average processing time</div>
+                <div className="mt-auto">
+                  {(() => {
+                    // Performance thresholds: < 5 days = Excellent, < 10 = Good, < 15 = Fair, >= 15 = Needs Attention
+                    let status = '';
+                    let statusColor = '';
+                    let progressPercent = 0;
+                    
+                    if (avgPOAge < 5) {
+                      status = 'Excellent';
+                      statusColor = 'green';
+                      progressPercent = (avgPOAge / 5) * 100;
+                    } else if (avgPOAge < 10) {
+                      status = 'Good';
+                      statusColor = 'blue';
+                      progressPercent = 75 + ((avgPOAge - 5) / 5) * 5;
+                    } else if (avgPOAge < 15) {
+                      status = 'Fair';
+                      statusColor = 'yellow';
+                      progressPercent = 50 + ((avgPOAge - 10) / 5) * 25;
+                    } else {
+                      status = 'Needs Attention';
+                      statusColor = 'red';
+                      progressPercent = Math.min(50 + ((avgPOAge - 15) / 10) * 50, 100);
+                    }
+                    
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-semibold ${
+                            statusColor === 'green' ? 'text-green-700' :
+                            statusColor === 'blue' ? 'text-blue-700' :
+                            statusColor === 'yellow' ? 'text-yellow-700' :
+                            'text-red-700'
+                          }`}>
+                            {status}
+                          </span>
+                          <span className="text-xs text-purple-600">
+                            Target: {'<'} 5 days
+                          </span>
+                        </div>
+                        <div className={`rounded-full h-2 ${
+                          statusColor === 'green' ? 'bg-green-200' :
+                          statusColor === 'blue' ? 'bg-blue-200' :
+                          statusColor === 'yellow' ? 'bg-yellow-200' :
+                          'bg-red-200'
+                        }`}>
+                          <div 
+                            className={`rounded-full h-2 transition-all ${
+                              statusColor === 'green' ? 'bg-green-600' :
+                              statusColor === 'blue' ? 'bg-blue-600' :
+                              statusColor === 'yellow' ? 'bg-yellow-600' :
+                              'bg-red-600'
+                            }`}
+                            style={{ width: `${100 - progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div 
+                className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg border border-teal-200 p-6 cursor-pointer hover:shadow-lg transition-all flex flex-col h-full"
                 onClick={() => showToast('Viewing spend analytics', 'info')}
-              />
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-teal-800">Avg Monthly Spend</div>
+                  <TrendingUp className="h-5 w-5 text-teal-600" />
+                </div>
+                <div className="text-2xl font-bold text-teal-900 mb-1">{formatCurrency(avgMonthlySpend)}</div>
+                <div className="text-xs text-teal-700 mb-4">+12% month-over-month</div>
+                <div className="mt-auto">
+                  {monthlySpendData && monthlySpendData.length > 0 && (
+                    <SparklineSvg data={monthlySpendData.map(d => d.spend)} color="#0891b2" />
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Workspace two-column + sticky sidebar */}
@@ -1214,6 +1367,443 @@ export default function ProcurementManagerDashboard() {
             </div>
           </div>
         )}
+
+        {activeTab === 'savings' && (() => {
+          // Calculate savings: Compare initial quote (from RFQ or request estimatedCost) vs final PO amount
+          // Note: In a real app, POs would have referenceId linking to RFQ or Request
+          const savingsData = (() => {
+            const savings = enhancedPurchaseOrders
+              .filter(po => po.status !== 'cancelled')
+              .map(po => {
+                // Try to find matching RFQ by checking if any RFQ has a similar amount or by PO number pattern
+                // In a real app, PO would have rfqId or requestId reference
+                const matchingRFQ = mockRFQs.find(rfq => {
+                  // Match by amount similarity (within 30% variance)
+                  const amountDiff = Math.abs(rfq.lowestQuote - po.amount);
+                  return amountDiff < rfq.lowestQuote * 0.3 || amountDiff < po.amount * 0.3;
+                });
+
+                // Try to find matching request by amount similarity (within 30% variance)
+                const matchingRequest = enhancedRequests.find(req => 
+                  Math.abs(req.estimatedCost - po.amount) < Math.max(req.estimatedCost, po.amount) * 0.3 &&
+                  (req.status === 'po-issued' || req.status === 'approved')
+                );
+
+                // Use RFQ lowestQuote if available, otherwise use request estimatedCost
+                // If no match found, skip this PO (don't assume savings)
+                if (!matchingRFQ && !matchingRequest) {
+                  return null;
+                }
+
+                const initialQuote = matchingRFQ?.lowestQuote || matchingRequest?.estimatedCost || po.amount;
+                const finalAmount = po.amount;
+                
+                // Only calculate if we actually have a lower initial quote
+                if (initialQuote <= finalAmount) {
+                  return null;
+                }
+
+                const savingsAmount = initialQuote - finalAmount;
+                const savingsPercent = initialQuote > 0 ? (savingsAmount / initialQuote) * 100 : 0;
+
+                return {
+                  poId: po.id,
+                  poNumber: po.poNumber,
+                  itemName: matchingRFQ?.itemName || matchingRequest?.itemName || 'Item',
+                  category: matchingRFQ?.category || 'General',
+                  vendor: po.vendor,
+                  initialQuote,
+                  finalAmount,
+                  savingsAmount,
+                  savingsPercent,
+                  createdAt: po.createdAt,
+                  rfqNumber: matchingRFQ?.rfqNumber,
+                  requestId: matchingRequest?.id,
+                };
+              })
+              .filter((item): item is NonNullable<typeof item> => item !== null && item.initialQuote > item.finalAmount); // Only show actual savings
+
+            return savings;
+          })();
+
+          const totalSavings = savingsData.reduce((sum, s) => sum + s.savingsAmount, 0);
+          const totalInitialValue = savingsData.reduce((sum, s) => sum + s.initialQuote, 0);
+          const avgSavingsPercent = totalInitialValue > 0 ? (totalSavings / totalInitialValue) * 100 : 0;
+          const savingsCount = savingsData.length;
+
+          // Category-wise savings
+          const categorySavings = savingsData.reduce((acc, s) => {
+            const cat = s.category;
+            if (!acc[cat]) {
+              acc[cat] = { totalSavings: 0, totalInitial: 0, count: 0 };
+            }
+            acc[cat].totalSavings += s.savingsAmount;
+            acc[cat].totalInitial += s.initialQuote;
+            acc[cat].count += 1;
+            return acc;
+          }, {} as Record<string, { totalSavings: number; totalInitial: number; count: number }>);
+
+          // Monthly savings trend
+          const monthlySavings = savingsData.reduce((acc, s) => {
+            const month = new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            if (!acc[month]) {
+              acc[month] = 0;
+            }
+            acc[month] += s.savingsAmount;
+            return acc;
+          }, {} as Record<string, number>);
+
+          const savingsTrendData = Object.entries(monthlySavings)
+            .map(([month, savings]) => ({ month, savings }))
+            .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+
+          // Vendor-wise savings
+          const vendorSavings = savingsData.reduce((acc, s) => {
+            if (!acc[s.vendor]) {
+              acc[s.vendor] = { totalSavings: 0, totalInitial: 0, count: 0, avgPercent: 0 };
+            }
+            acc[s.vendor].totalSavings += s.savingsAmount;
+            acc[s.vendor].totalInitial += s.initialQuote;
+            acc[s.vendor].count += 1;
+            acc[s.vendor].avgPercent = (acc[s.vendor].totalSavings / acc[s.vendor].totalInitial) * 100;
+            return acc;
+          }, {} as Record<string, { totalSavings: number; totalInitial: number; count: number; avgPercent: number }>);
+
+          // Top savings opportunities (highest savings %)
+          const topSavings = [...savingsData].sort((a, b) => b.savingsPercent - a.savingsPercent).slice(0, 5);
+
+          // Savings distribution by percentage ranges
+          const savingsDistribution = savingsData.reduce((acc, s) => {
+            let range = '';
+            if (s.savingsPercent >= 15) range = '15%+ (Excellent)';
+            else if (s.savingsPercent >= 10) range = '10-15% (Great)';
+            else if (s.savingsPercent >= 5) range = '5-10% (Good)';
+            else range = '0-5% (Fair)';
+            
+            if (!acc[range]) {
+              acc[range] = { count: 0, totalSavings: 0 };
+            }
+            acc[range].count += 1;
+            acc[range].totalSavings += s.savingsAmount;
+            return acc;
+          }, {} as Record<string, { count: number; totalSavings: number }>);
+
+          // Calculate savings rate (savings instances / total POs)
+          const totalPOs = enhancedPurchaseOrders.filter(po => po.status !== 'cancelled').length;
+          const savingsRate = totalPOs > 0 ? (savingsCount / totalPOs) * 100 : 0;
+
+          // Category efficiency (savings per PO)
+          const categoryEfficiency = Object.entries(categorySavings).map(([cat, data]) => ({
+            category: cat,
+            totalSavings: data.totalSavings,
+            count: data.count,
+            avgSavingsPerPO: data.totalSavings / data.count,
+            avgPercent: (data.totalSavings / data.totalInitial) * 100,
+            initialValue: data.totalInitial,
+            finalValue: data.totalInitial - data.totalSavings,
+          }));
+
+          // Cumulative savings over time
+          const cumulativeData = savingsTrendData.map((item, index) => ({
+            ...item,
+            cumulative: savingsTrendData.slice(0, index + 1).reduce((sum, d) => sum + d.savings, 0),
+          }));
+
+          // Comparison: Initial vs Final (Stacked chart)
+          const comparisonData = categoryEfficiency.map(cat => ({
+            category: cat.category.length > 12 ? cat.category.substring(0, 12) + '...' : cat.category,
+            initial: cat.initialValue / 1000,
+            final: cat.finalValue / 1000,
+            savings: cat.totalSavings / 1000,
+          }));
+
+          return (
+            <div className="space-y-6">
+              {/* Enhanced KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-green-800">Total Savings</div>
+                    <DollarSign className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-green-900">{formatCurrency(totalSavings)}</div>
+                  <div className="text-xs text-green-700 mt-2">{avgSavingsPercent.toFixed(1)}% average savings rate</div>
+                  <div className="mt-3 bg-green-200 rounded-full h-2">
+                    <div className="bg-green-600 rounded-full h-2" style={{ width: `${Math.min(avgSavingsPercent * 5, 100)}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-blue-800">Savings Rate</div>
+                    <TrendingUp className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-blue-900">{savingsRate.toFixed(1)}%</div>
+                  <div className="text-xs text-blue-700 mt-2">{savingsCount} of {totalPOs} POs achieved savings</div>
+                  <div className="mt-3 bg-blue-200 rounded-full h-2">
+                    <div className="bg-blue-600 rounded-full h-2" style={{ width: `${savingsRate}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-purple-800">Avg Savings %</div>
+                    <FileText className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-purple-900">{avgSavingsPercent.toFixed(1)}%</div>
+                  <div className="text-xs text-purple-700 mt-2">Per negotiation instance</div>
+                  <div className="mt-3 flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <div
+                        key={star}
+                        className={`h-2 w-2 rounded-full ${
+                          star <= Math.ceil(avgSavingsPercent / 3) ? 'bg-purple-600' : 'bg-purple-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200 p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-orange-800">Total Negotiated</div>
+                    <CheckCircle2 className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-orange-900">{formatCurrency(totalInitialValue)}</div>
+                  <div className="text-xs text-orange-700 mt-2">Initial quote value</div>
+                  <div className="mt-3 text-xs text-orange-600">
+                    Final: {formatCurrency(totalInitialValue - totalSavings)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced Charts - First Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Savings Trend with Cumulative */}
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#31343A]">Monthly Savings Trend</h3>
+                      <p className="text-xs text-[#9DA5A8] mt-1">Tracking savings performance over time</p>
+                    </div>
+                  </div>
+                  {cumulativeData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <ComposedChart data={cumulativeData.map(d => ({ ...d, savings: d.savings / 1000, cumulative: d.cumulative / 1000 }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
+                        <XAxis dataKey="month" stroke="#9DA5A8" fontSize={12} />
+                        <YAxis stroke="#9DA5A8" fontSize={12} label={{ value: 'Amount (thousands)', angle: -90, position: 'insideLeft' }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #DFE2E4',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value: any) => formatCurrency(Number(value) * 1000)}
+                        />
+                        <Legend />
+                        <Bar dataKey="savings" name="Monthly Savings" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Area
+                          type="monotone"
+                          dataKey="cumulative"
+                          name="Cumulative Savings"
+                          fill="#005691"
+                          fillOpacity={0.3}
+                          stroke="#005691"
+                          strokeWidth={2}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="text-center py-8 text-[#9DA5A8]">No savings data available</div>
+                  )}
+                </div>
+
+                {/* Savings Distribution */}
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#31343A]">Savings Distribution</h3>
+                      <p className="text-xs text-[#9DA5A8] mt-1">Performance by savings percentage range</p>
+                    </div>
+                  </div>
+                  {Object.keys(savingsDistribution).length > 0 ? (
+                    <div className="space-y-4">
+                      {Object.entries(savingsDistribution).map(([range, data]) => {
+                        const totalInRange = Object.values(savingsDistribution).reduce((sum, d) => sum + d.count, 0);
+                        const percentage = (data.count / totalInRange) * 100;
+                        const colorClass = range.includes('Excellent') ? 'bg-green-600' :
+                                         range.includes('Great') ? 'bg-blue-600' :
+                                         range.includes('Good') ? 'bg-yellow-500' : 'bg-orange-500';
+                        return (
+                          <div key={range}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-[#31343A]">{range}</span>
+                              <span className="text-xs text-[#9DA5A8]">{data.count} POs • {formatCurrency(data.totalSavings)}</span>
+                            </div>
+                            <div className="bg-[#DFE2E4] rounded-full h-3 overflow-hidden">
+                              <div
+                                className={`${colorClass} h-3 rounded-full transition-all`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="mt-4 pt-4 border-t border-[#DFE2E4]">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-[#9DA5A8]">Total Instances</span>
+                          <span className="font-semibold text-[#31343A]">{savingsCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-[#9DA5A8]">No distribution data available</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Top Performers & Vendor Analysis */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top Savings Opportunities */}
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#31343A]">Top 5 Savings Achievements</h3>
+                      <p className="text-xs text-[#9DA5A8] mt-1">Highest savings percentage instances</p>
+                    </div>
+                  </div>
+                  {topSavings.length > 0 ? (
+                    <div className="space-y-3">
+                      {topSavings.map((s, index) => (
+                        <div key={s.poId} className="border border-[#DFE2E4] rounded-lg p-4 hover:bg-[#DFE2E4]/30 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+                                  #{index + 1}
+                                </span>
+                                <span className="text-sm font-medium text-[#31343A]">{s.poNumber}</span>
+                              </div>
+                              <div className="text-xs text-[#9DA5A8] ml-8">{s.itemName}</div>
+                              <div className="flex items-center gap-4 mt-2 ml-8">
+                                <div className="text-xs">
+                                  <span className="text-[#9DA5A8]">Initial: </span>
+                                  <span className="font-medium text-[#31343A]">{formatCurrency(s.initialQuote)}</span>
+                                </div>
+                                <div className="text-xs">
+                                  <span className="text-[#9DA5A8]">Final: </span>
+                                  <span className="font-medium text-[#31343A]">{formatCurrency(s.finalAmount)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-green-600">{s.savingsPercent.toFixed(1)}%</div>
+                              <div className="text-xs text-green-600">{formatCurrency(s.savingsAmount)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-[#9DA5A8]">No top savings data available</div>
+                  )}
+                </div>
+
+                {/* Vendor Performance */}
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#31343A]">Vendor Savings Performance</h3>
+                      <p className="text-xs text-[#9DA5A8] mt-1">Top vendors by total savings achieved</p>
+                    </div>
+                  </div>
+                  {Object.keys(vendorSavings).length > 0 ? (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                      {Object.entries(vendorSavings)
+                        .sort((a, b) => b[1].totalSavings - a[1].totalSavings)
+                        .slice(0, 8)
+                        .map(([vendor, data]) => {
+                          const vendorPercentage = (data.totalSavings / totalSavings) * 100;
+                          return (
+                            <div key={vendor} className="border border-[#DFE2E4] rounded-lg p-3 hover:bg-[#DFE2E4]/30 transition-colors">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-[#31343A] truncate">{vendor}</span>
+                                <span className="text-xs font-semibold text-green-600">{data.avgPercent.toFixed(1)}% avg</span>
+                              </div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="flex-1 bg-[#DFE2E4] rounded-full h-2">
+                                  <div
+                                    className="bg-green-600 rounded-full h-2 transition-all"
+                                    style={{ width: `${vendorPercentage}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-[#9DA5A8] whitespace-nowrap">{formatCurrency(data.totalSavings)}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs text-[#9DA5A8]">
+                                <span>{data.count} POs</span>
+                                <span>{vendorPercentage.toFixed(1)}% of total</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-[#9DA5A8]">No vendor data available</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Savings Table */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] overflow-hidden">
+                <div className="p-4 border-b border-[#DFE2E4]">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Savings Breakdown</h3>
+                  <p className="text-sm text-[#9DA5A8] mt-1">Detailed view of savings from initial quotes to final PO amounts</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-[#DFE2E4]">
+                    <thead className="bg-[#DFE2E4]/30">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">PO Number</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">Item</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">Vendor</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">Initial Quote</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">Final PO</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">Savings</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">Savings %</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#9DA5A8] uppercase">RFQ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-[#DFE2E4]">
+                      {savingsData.length > 0 ? (
+                        savingsData.map((s) => (
+                          <tr key={s.poId} className="hover:bg-[#DFE2E4]/30">
+                            <td className="px-6 py-4 text-sm font-medium text-[#31343A]">{s.poNumber}</td>
+                            <td className="px-6 py-4 text-sm text-[#31343A]">{s.itemName}</td>
+                            <td className="px-6 py-4 text-sm text-[#9DA5A8]">{s.category}</td>
+                            <td className="px-6 py-4 text-sm text-[#31343A]">{s.vendor}</td>
+                            <td className="px-6 py-4 text-sm text-[#31343A]">{formatCurrency(s.initialQuote)}</td>
+                            <td className="px-6 py-4 text-sm font-medium text-[#31343A]">{formatCurrency(s.finalAmount)}</td>
+                            <td className="px-6 py-4 text-sm font-semibold text-green-600">{formatCurrency(s.savingsAmount)}</td>
+                            <td className="px-6 py-4 text-sm font-semibold text-green-600">{s.savingsPercent.toFixed(1)}%</td>
+                            <td className="px-6 py-4 text-sm text-[#9DA5A8]">{s.rfqNumber || '-'}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={9} className="px-6 py-8 text-center text-[#9DA5A8]">
+                            No savings data available. Savings will appear here once POs are issued with negotiated amounts lower than initial quotes.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {activeTab === 'approvals' && (() => {
           // Calculate KPIs
