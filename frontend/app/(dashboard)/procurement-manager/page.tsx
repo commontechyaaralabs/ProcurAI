@@ -121,6 +121,13 @@ const getNavItems = (onClick: (href: string) => void, activeTab: string) => [
     isActive: activeTab === 'requests'
   },
   { 
+    label: 'Approvals', 
+    href: '/procurement-manager/approvals', 
+    icon: CheckCircle2, 
+    onClick: () => onClick('/procurement-manager/approvals'),
+    isActive: activeTab === 'approvals'
+  },
+  { 
     label: 'Vendors', 
     href: '/procurement-manager/vendors', 
     icon: Building2, 
@@ -147,13 +154,6 @@ const getNavItems = (onClick: (href: string) => void, activeTab: string) => [
     icon: DollarSign, 
     onClick: () => onClick('/procurement-manager/savings'),
     isActive: activeTab === 'savings'
-  },
-  { 
-    label: 'Approvals', 
-    href: '/procurement-manager/approvals', 
-    icon: CheckCircle2, 
-    onClick: () => onClick('/procurement-manager/approvals'),
-    isActive: activeTab === 'approvals'
   },
 ];
 
