@@ -11,14 +11,20 @@ import {
   Lightbulb,
   Building2,
   Download,
-  FileDown
+  FileDown,
+  DollarSign,
+  Clock,
+  FileCheck,
+  Zap
 } from 'lucide-react';
 import { monthlySpendData, categorySpendData, topVendorsData, mockVendors, mockRequests } from '@/lib/mockData';
 import { formatCurrency } from '@/lib/utils';
 import { LineChart } from '@/components/charts/LineChart';
 import { BarChart } from '@/components/charts/BarChart';
 import { PieChart } from '@/components/charts/PieChart';
+import { MultiLineChart } from '@/components/charts/MultiLineChart';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Line, Area, AreaChart, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart, ScatterChart, Scatter, ReferenceLine } from 'recharts';
 
 const navItems = [
   { label: 'Executive Overview', href: '/cfo', icon: BarChart3 },
@@ -60,6 +66,180 @@ export default function CFODashboard() {
   const overBudgetRequests = mockRequests.filter(r => r.budgetStatus === 'over-budget');
   const vendorPerformance = mockVendors.sort((a, b) => b.performanceRating - a.performanceRating);
 
+  // CFO Finance Cockpit Data
+  const ytdBudget = 12800000;
+  const ytdSpend = 9984000; // 78% utilization
+  const ytdVariance = ytdSpend - ytdBudget;
+  const ytdVariancePct = ((ytdVariance / ytdBudget) * 100).toFixed(1);
+  
+  const runRate = 1050000; // Last 30 days annualized / 12
+  const committedNotInvoiced = 2450000; // Open POs
+  const agingPayables = {
+    '≤30': 3200000,
+    '31-60': 1450000,
+    '61-90': 650000,
+    '90+': 280000
+  };
+  
+  const top3Overruns = [
+    { dept: 'IT', category: 'Software', variance: 12.5, amount: 350000 },
+    { dept: 'Production', category: 'Raw Materials', variance: 8.3, amount: 265000 },
+    { dept: 'Manufacturing', category: 'Equipment', variance: 6.2, amount: 180000 },
+  ];
+
+  // Liquidity & Cash Discipline Data
+  const cnirAging = {
+    '≤30': 1800000,
+    '31-60': 450000,
+    '61-90': 150000,
+    '90+': 50000
+  };
+  const discountCaptureRate = 68.5; // %
+  const lostDiscounts = 125000; // ₹
+  const discountAPR = 24.5; // %
+  
+  // 13-week cash calendar (Base / Early-pay / Stretch scenarios)
+  const cashCalendar = Array.from({ length: 13 }, (_, i) => ({
+    week: `W${i + 1}`,
+    base: 3200000 + (i * 150000),
+    earlyPay: 2800000 + (i * 130000),
+    stretch: 3600000 + (i * 170000),
+  }));
+
+  // Price-Volume-Mix Bridge Data
+  const pvmBridge = {
+    priceVar: 1250000,
+    volumeVar: -820000,
+    mixVar: 310000,
+    fxVar: 90000,
+    oneOffs: -140000,
+    total: 690000
+  };
+
+  // Should-Cost Gap Data
+  const shouldCostGaps = [
+    { category: 'Steel & Raw Materials', vendorPrice: 450000, shouldCost: 420000, gap: 7.1, atRisk: 30000, beta: 0.95, r2: 0.92 },
+    { category: 'Engine Components', vendorPrice: 320000, shouldCost: 310000, gap: 3.2, atRisk: 10000, beta: 0.88, r2: 0.89 },
+  ];
+
+  // Vendor Concentration Data
+  const vendorConcentration = [
+    { category: 'Steel & Raw Materials', hhi: 2850, top3Pct: 72, singleSourcePct: 15, risk: 'High' },
+    { category: 'Electronics & Sensors', hhi: 3420, top3Pct: 78, singleSourcePct: 22, risk: 'High' },
+    { category: 'Engine Components', hhi: 1950, top3Pct: 58, singleSourcePct: 8, risk: 'Medium' },
+  ];
+
+  // FY Projection from Run-Rate
+  const fyProjection = runRate * 12;
+  const fyProjectionVariance = ((fyProjection - ytdBudget) / ytdBudget) * 100;
+
+  // Data Quality Metrics
+  const dataConfidence = 87.5; // %
+  const threeWayMatched = 92.3; // %
+  const classifiedSpend = 94.1; // %
+  const maverickSpendPct = 5.2; // %
+  const contractedSpendCoverage = 78.5; // %
+
+  // Extended department data for league table
+  const departmentLeagueTable = [
+    { 
+      dept: 'Production', 
+      fyBudget: 3200000, 
+      committed: 3100000, 
+      invoiced: 2950000, 
+      paid: 2850000, 
+      varianceAbs: -350000, 
+      variancePct: -10.9, 
+      runRatePerMonth: 305000, 
+      momDeltaPct: 2.3, 
+      yoyDeltaPct: 5.1, 
+      indentCount: 142, 
+      avgApprovalHours: 48 
+    },
+    { 
+      dept: 'Manufacturing', 
+      fyBudget: 4500000, 
+      committed: 4200000, 
+      invoiced: 4000000, 
+      paid: 3850000, 
+      varianceAbs: -650000, 
+      variancePct: -14.4, 
+      runRatePerMonth: 420000, 
+      momDeltaPct: 1.8, 
+      yoyDeltaPct: 3.2, 
+      indentCount: 218, 
+      avgApprovalHours: 52 
+    },
+    { 
+      dept: 'IT', 
+      fyBudget: 2500000, 
+      committed: 2800000, 
+      invoiced: 2650000, 
+      paid: 2550000, 
+      varianceAbs: 50000, 
+      variancePct: 2.0, 
+      runRatePerMonth: 280000, 
+      momDeltaPct: 8.5, 
+      yoyDeltaPct: 12.3, 
+      indentCount: 89, 
+      avgApprovalHours: 36 
+    },
+    { 
+      dept: 'Logistics', 
+      fyBudget: 1800000, 
+      committed: 1650000, 
+      invoiced: 1580000, 
+      paid: 1520000, 
+      varianceAbs: -280000, 
+      variancePct: -15.6, 
+      runRatePerMonth: 165000, 
+      momDeltaPct: -1.2, 
+      yoyDeltaPct: 2.5, 
+      indentCount: 76, 
+      avgApprovalHours: 42 
+    },
+    { 
+      dept: 'Services', 
+      fyBudget: 800000, 
+      committed: 750000, 
+      invoiced: 720000, 
+      paid: 700000, 
+      varianceAbs: -100000, 
+      variancePct: -12.5, 
+      runRatePerMonth: 75000, 
+      momDeltaPct: 0.5, 
+      yoyDeltaPct: -1.2, 
+      indentCount: 45, 
+      avgApprovalHours: 38 
+    },
+  ];
+
+  // Department Spend Trends Data (12 months for full view)
+  const departmentSpendTrends = [
+    { month: 'Jan', Manufacturing: 300000, Production: 240000, IT: 180000, Logistics: 130000, Services: 58000, budget: 1120000 },
+    { month: 'Feb', Manufacturing: 315000, Production: 250000, IT: 190000, Logistics: 135000, Services: 60000, budget: 1120000 },
+    { month: 'Mar', Manufacturing: 330000, Production: 260000, IT: 200000, Logistics: 138000, Services: 62000, budget: 1120000 },
+    { month: 'Apr', Manufacturing: 340000, Production: 265000, IT: 205000, Logistics: 140000, Services: 63000, budget: 1120000 },
+    { month: 'May', Manufacturing: 350000, Production: 270000, IT: 210000, Logistics: 142000, Services: 65000, budget: 1120000 },
+    { month: 'Jun', Manufacturing: 345000, Production: 268000, IT: 208000, Logistics: 141000, Services: 64000, budget: 1120000 },
+    { month: 'Jul', Manufacturing: 340000, Production: 260000, IT: 210000, Logistics: 140000, Services: 62000, budget: 1120000 },
+    { month: 'Aug', Manufacturing: 365000, Production: 275000, IT: 225000, Logistics: 145000, Services: 68000, budget: 1120000 },
+    { month: 'Sep', Manufacturing: 380000, Production: 290000, IT: 240000, Logistics: 150000, Services: 72000, budget: 1120000 },
+    { month: 'Oct', Manufacturing: 395000, Production: 300000, IT: 255000, Logistics: 158000, Services: 75000, budget: 1120000 },
+    { month: 'Nov', Manufacturing: 410000, Production: 305000, IT: 270000, Logistics: 162000, Services: 78000, budget: 1120000 },
+    { month: 'Dec', Manufacturing: 420000, Production: 310000, IT: 280000, Logistics: 165000, Services: 75000, budget: 1120000 },
+  ];
+
+  // Category Spend Trends Data (6 months)
+  const categorySpendTrends = [
+    { month: 'Jul', 'Steel & Raw Materials': 400000, 'Engine Components': 265000, 'Electronics & Sensors': 183000, 'Tires & Wheels': 125000, 'Paint & Coatings': 71000 },
+    { month: 'Aug', 'Steel & Raw Materials': 420000, 'Engine Components': 280000, 'Electronics & Sensors': 192000, 'Tires & Wheels': 130000, 'Paint & Coatings': 74000 },
+    { month: 'Sep', 'Steel & Raw Materials': 435000, 'Engine Components': 290000, 'Electronics & Sensors': 200000, 'Tires & Wheels': 135000, 'Paint & Coatings': 77000 },
+    { month: 'Oct', 'Steel & Raw Materials': 450000, 'Engine Components': 300000, 'Electronics & Sensors': 208000, 'Tires & Wheels': 140000, 'Paint & Coatings': 80000 },
+    { month: 'Nov', 'Steel & Raw Materials': 465000, 'Engine Components': 310000, 'Electronics & Sensors': 215000, 'Tires & Wheels': 145000, 'Paint & Coatings': 82000 },
+    { month: 'Dec', 'Steel & Raw Materials': 480000, 'Engine Components': 320000, 'Electronics & Sensors': 220000, 'Tires & Wheels': 150000, 'Paint & Coatings': 85000 },
+  ];
+
   return (
     <DashboardLayout 
       navItems={navItems} 
@@ -75,36 +255,182 @@ export default function CFODashboard() {
       <div className="space-y-6">
         {activeView === 'overview' && (
           <>
-            {/* High-level KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <KPICard
-                title="Total Annual Spend"
-                value={formatCurrency(totalAnnualSpend)}
-                change="+8.2% YoY"
-                trend="up"
-                icon={TrendingUp}
-              />
-              <KPICard
-                title="Budget Utilization"
-                value={`${budgetUtilization}%`}
-                change="On track"
-                trend="neutral"
-                icon={BarChart3}
-              />
-              <KPICard
-                title="Active Vendors"
-                value={activeVendorCount}
-                change="-3 this quarter"
-                trend="down"
-                icon={Building2}
-              />
-              <KPICard
-                title="Cost Savings Identified"
-                value={formatCurrency(costSavings)}
-                change="AI-recommended"
-                trend="up"
-                icon={Lightbulb}
-              />
+            {/* CFO Finance Cockpit - Top Strip KPIs */}
+            <div className="space-y-4">
+              {/* Primary KPIs Row */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="p-2 bg-[#005691]/10 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-[#005691]" />
+                  </div>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded ${parseFloat(ytdVariancePct) > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                    {parseFloat(ytdVariancePct) > 0 ? '+' : ''}{ytdVariancePct}%
+                  </span>
+                </div>
+                <h3 className="text-xs text-[#9DA5A8] mb-1">YTD Spend vs Budget</h3>
+                <p className="text-lg font-bold text-[#31343A]">{formatCurrency(ytdSpend)}</p>
+                <p className="text-xs text-[#9DA5A8] mt-1">of {formatCurrency(ytdBudget)}</p>
+              </div>
+
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="p-2 bg-[#005691]/10 rounded-lg">
+                    <Zap className="h-5 w-5 text-[#005691]" />
+                  </div>
+                </div>
+                <h3 className="text-xs text-[#9DA5A8] mb-1">Run-rate (Monthly)</h3>
+                <p className="text-lg font-bold text-[#31343A]">{formatCurrency(runRate)}</p>
+                <p className="text-xs text-[#9DA5A8] mt-1">Last 30d annualized</p>
+              </div>
+
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="p-2 bg-amber-50 rounded-lg">
+                    <FileCheck className="h-5 w-5 text-amber-600" />
+                  </div>
+                </div>
+                <h3 className="text-xs text-[#9DA5A8] mb-1">Committed Not Invoiced</h3>
+                <p className="text-lg font-bold text-[#31343A]">{formatCurrency(committedNotInvoiced)}</p>
+                <p className="text-xs text-[#9DA5A8] mt-1">Open POs</p>
+              </div>
+
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="p-2 bg-[#005691]/10 rounded-lg">
+                    <Clock className="h-5 w-5 text-[#005691]" />
+                  </div>
+                </div>
+                <h3 className="text-xs text-[#9DA5A8] mb-1">Aging Payables</h3>
+                <p className="text-lg font-bold text-[#31343A]">{formatCurrency(Object.values(agingPayables).reduce((a, b) => a + b, 0))}</p>
+                <div className="flex gap-1 mt-2 text-xs">
+                  <span className="text-green-600">≤30: {formatCurrency(agingPayables['≤30'])}</span>
+                  <span className="text-amber-600">31-60: {formatCurrency(agingPayables['31-60'])}</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="p-2 bg-red-50 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
+                </div>
+                <h3 className="text-xs text-[#9DA5A8] mb-1">Top 3 Overruns</h3>
+                <div className="space-y-1 mt-2">
+                  {top3Overruns.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs">
+                      <span className="text-[#31343A]">{item.dept}/{item.category}</span>
+                      <span className="font-semibold text-red-600">+{item.variance}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+              {/* Micro-KPIs Row */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-3">
+                  <p className="text-xs text-[#9DA5A8] mb-1">FY Projection</p>
+                  <p className="text-sm font-bold text-[#31343A]">{formatCurrency(fyProjection)}</p>
+                  <p className={`text-xs mt-1 ${fyProjectionVariance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {fyProjectionVariance > 0 ? '+' : ''}{fyProjectionVariance.toFixed(1)}% vs budget
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-3">
+                  <p className="text-xs text-[#9DA5A8] mb-1">Discount Capture</p>
+                  <p className="text-sm font-bold text-[#31343A]">{discountCaptureRate.toFixed(1)}%</p>
+                  <p className="text-xs text-red-600 mt-1">Lost: {formatCurrency(lostDiscounts)}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-3">
+                  <p className="text-xs text-[#9DA5A8] mb-1">Cash at Risk</p>
+                  <p className="text-sm font-bold text-[#31343A]">{formatCurrency(cnirAging['90+'])}</p>
+                  <p className="text-xs text-[#9DA5A8] mt-1">90+ days CNIR</p>
+                </div>
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-3">
+                  <p className="text-xs text-[#9DA5A8] mb-1">Maverick Spend</p>
+                  <p className="text-sm font-bold text-[#31343A]">{maverickSpendPct.toFixed(1)}%</p>
+                  <p className="text-xs text-amber-600 mt-1">Policy drift</p>
+                </div>
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-3">
+                  <p className="text-xs text-[#9DA5A8] mb-1">Contracted Coverage</p>
+                  <p className="text-sm font-bold text-[#31343A]">{contractedSpendCoverage.toFixed(1)}%</p>
+                  <p className="text-xs text-[#9DA5A8] mt-1">Under contract</p>
+                </div>
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-3">
+                  <p className="text-xs text-[#9DA5A8] mb-1">Data Confidence</p>
+                  <p className="text-sm font-bold text-[#31343A]">{dataConfidence.toFixed(1)}%</p>
+                  <p className="text-xs text-[#9DA5A8] mt-1">3-way: {threeWayMatched.toFixed(1)}%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Liquidity & Cash Discipline Section */}
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-[#31343A]">Liquidity & Cash Discipline</h2>
+              
+              {/* 13-Week AP Cash-Out Calendar */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#31343A] mb-1">13-Week AP Cash-Out Calendar</h3>
+                    <p className="text-sm text-[#9DA5A8]">Cash outflow forecast by week</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="px-3 py-1 text-sm border border-[#B6BBBE] rounded-lg hover:bg-[#DFE2E4]/30">Base</button>
+                    <button className="px-3 py-1 text-sm bg-[#005691] text-white rounded-lg">Early-pay</button>
+                    <button className="px-3 py-1 text-sm border border-[#B6BBBE] rounded-lg hover:bg-[#DFE2E4]/30">Stretch</button>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={cashCalendar}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
+                    <XAxis dataKey="week" tick={{ fill: '#9DA5A8', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#9DA5A8', fontSize: 11 }} label={{ value: '₹ (thousands)', angle: -90, position: 'insideLeft', style: { fill: '#9DA5A8', fontSize: 11 } }} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Legend />
+                    <Bar dataKey="base" fill="#005691" name="Base Terms" />
+                    <Bar dataKey="earlyPay" fill="#E00420" name="Early-pay" />
+                    <Bar dataKey="stretch" fill="#31343A" name="Stretch Terms" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* CNIR Aging & Discount Metrics */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                  <h3 className="text-lg font-semibold text-[#31343A] mb-4">Committed-Not-Invoiced Aging</h3>
+                  <div className="space-y-3">
+                    {Object.entries(cnirAging).map(([bucket, amount]) => (
+                      <div key={bucket} className="flex items-center justify-between p-3 bg-[#DFE2E4]/20 rounded-lg">
+                        <span className="text-sm font-medium text-[#31343A]">{bucket} days</span>
+                        <span className="text-sm font-bold text-[#31343A]">{formatCurrency(amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                  <h3 className="text-lg font-semibold text-[#31343A] mb-4">Discount Capture & ROI</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-[#9DA5A8]">Capture Rate</span>
+                        <span className="text-lg font-bold text-[#31343A]">{discountCaptureRate.toFixed(1)}%</span>
+                      </div>
+                      <div className="h-2 bg-[#DFE2E4] rounded-full">
+                        <div className="h-2 bg-[#005691] rounded-full" style={{ width: `${discountCaptureRate}%` }}></div>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-[#DFE2E4]">
+                      <p className="text-sm text-[#9DA5A8] mb-1">Lost Discounts (Last 30d)</p>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(lostDiscounts)}</p>
+                    </div>
+                    <div className="pt-3 border-t border-[#DFE2E4]">
+                      <p className="text-sm text-[#9DA5A8] mb-1">Dynamic Discount APR</p>
+                      <p className="text-2xl font-bold text-[#31343A]">{discountAPR.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Charts Row 1 */}
@@ -143,10 +469,600 @@ export default function CFODashboard() {
               </div>
             </div>
 
+            {/* 1) Spends by Department — with trends */}
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-[#31343A]">Spends by Department with Trends</h2>
+              
+              {/* Stacked Area Chart (12 months) */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#31343A] mb-1">Monthly Spend by Department</h3>
+                    <p className="text-sm text-[#9DA5A8]">12-month stacked area showing seasonality and mix-shift</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="px-3 py-1 text-sm border border-[#B6BBBE] rounded-lg hover:bg-[#DFE2E4]/30">
+                      ₹
+                    </button>
+                    <button className="px-3 py-1 text-sm bg-[#005691] text-white rounded-lg">
+                      %
+                    </button>
+                    <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={departmentSpendTrends.map((d: any) => ({ ...d, Manufacturing: d.Manufacturing / 1000, Production: d.Production / 1000, IT: d.IT / 1000, Logistics: d.Logistics / 1000, Services: d.Services / 1000, budget: d.budget / 1000 }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
+                    <XAxis dataKey="month" tick={{ fill: '#9DA5A8', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#9DA5A8', fontSize: 12 }} label={{ value: 'Spend (thousands)', angle: -90, position: 'insideLeft', style: { fill: '#9DA5A8', fontSize: 12 } }} />
+                    <Tooltip 
+                      formatter={(value: number) => `₹${value.toLocaleString('en-IN')}K`}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #DFE2E4', borderRadius: '6px' }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                    <Area type="monotone" dataKey="Manufacturing" stackId="1" stroke="#005691" fill="#005691" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="Production" stackId="1" stroke="#0066a3" fill="#0066a3" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="IT" stackId="1" stroke="#E00420" fill="#E00420" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="Logistics" stackId="1" stroke="#31343A" fill="#31343A" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="Services" stackId="1" stroke="#4A4E56" fill="#4A4E56" fillOpacity={0.6} />
+                    <Line type="monotone" dataKey="budget" stroke="#E00420" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Department League Table */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Department League Table</h3>
+                  <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#DFE2E4]">
+                        <th className="text-left py-3 px-4 text-[#9DA5A8] font-medium">Dept</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">FY Budget</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Committed</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Invoiced</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Paid</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Variance</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Run-rate</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">MoM Δ</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">YoY Δ</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">#Indents</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Avg Approval</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {departmentLeagueTable.map((dept, idx) => {
+                        const committedPaidGap = dept.committed - dept.paid;
+                        const committedPaidDays = Math.round((committedPaidGap / dept.committed) * 60); // Estimated days
+                        const dpo = 35 + (idx * 3); // Mock DPO
+                        const top3VendorPct = 65 + (idx * 5);
+                        const exceptions = idx % 3 === 0 ? 12 : idx % 3 === 1 ? 5 : 2;
+                        const dataQuality = 90 + (idx % 3);
+                        return (
+                          <tr key={idx} className="border-b border-[#DFE2E4]/50 hover:bg-[#DFE2E4]/30 cursor-pointer">
+                            <td className="py-3 px-4 font-medium text-[#31343A]">{dept.dept}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(dept.fyBudget)}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(dept.committed)}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(dept.invoiced)}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(dept.paid)}</td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="text-xs text-[#31343A]">{formatCurrency(committedPaidGap)}</span>
+                                <span className="text-xs text-[#9DA5A8]">{committedPaidDays}d</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="text-xs text-[#31343A]">{dpo}d</span>
+                                <span className="text-xs text-[#9DA5A8]">Policy: 30d</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`text-xs font-semibold ${
+                                top3VendorPct > 70 ? 'text-red-600' :
+                                top3VendorPct > 60 ? 'text-amber-600' :
+                                'text-green-600'
+                              }`}>
+                                {top3VendorPct.toFixed(0)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                dept.variancePct > 10 ? 'bg-red-50 text-red-700' :
+                                dept.variancePct > 0 ? 'bg-amber-50 text-amber-700' :
+                                'bg-green-50 text-green-700'
+                              }`}>
+                                {dept.variancePct > 0 ? '+' : ''}{dept.variancePct.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(dept.runRatePerMonth)}</td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`text-xs font-semibold ${
+                                dept.momDeltaPct > 5 ? 'text-red-600' :
+                                dept.momDeltaPct > 0 ? 'text-amber-600' :
+                                'text-green-600'
+                              }`}>
+                                {dept.momDeltaPct > 0 ? '+' : ''}{dept.momDeltaPct.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`text-xs font-semibold ${
+                                exceptions > 8 ? 'text-red-600' :
+                                exceptions > 3 ? 'text-amber-600' :
+                                'text-green-600'
+                              }`}>
+                                {exceptions}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`text-xs font-semibold ${
+                                dataQuality > 95 ? 'text-green-600' :
+                                dataQuality > 90 ? 'text-amber-600' :
+                                'text-red-600'
+                              }`}>
+                                {dataQuality.toFixed(0)}%
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Price-Volume-Mix Bridge */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#31343A] mb-1">Price-Volume-Mix Bridge</h3>
+                    <p className="text-sm text-[#9DA5A8]">IT up ₹3.1M MoM: Price +₹1.25M, Volume −₹0.82M, Mix +₹0.31M; FX +₹0.09M</p>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={250}>
+                  <RechartsBarChart data={[
+                    { label: 'Price Δ', value: pvmBridge.priceVar / 1000, fill: '#E00420' },
+                    { label: 'Volume Δ', value: pvmBridge.volumeVar / 1000, fill: '#0066a3' },
+                    { label: 'Mix Δ', value: pvmBridge.mixVar / 1000, fill: '#005691' },
+                    { label: 'FX', value: pvmBridge.fxVar / 1000, fill: '#4A4E56' },
+                    { label: 'One-offs', value: pvmBridge.oneOffs / 1000, fill: '#9DA5A8' },
+                    { label: 'Net Variance', value: pvmBridge.total / 1000, fill: '#31343A' },
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
+                    <XAxis dataKey="label" tick={{ fill: '#9DA5A8', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#9DA5A8', fontSize: 11 }} label={{ value: '₹ (thousands)', angle: -90, position: 'insideLeft' }} />
+                    <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}K`} />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {[
+                        { fill: '#E00420' },
+                        { fill: '#0066a3' },
+                        { fill: '#005691' },
+                        { fill: '#4A4E56' },
+                        { fill: '#9DA5A8' },
+                        { fill: '#31343A' },
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Should-Cost Gap & Indexation */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Should-Cost Gap & Indexation IQ</h3>
+                  <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#DFE2E4]">
+                        <th className="text-left py-3 px-4 text-[#9DA5A8] font-medium">Category</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Vendor Price</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Should-Cost</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Gap %</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">At-Risk ₹</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">β to Index</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">R²</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shouldCostGaps.map((item, idx) => (
+                        <tr key={idx} className="border-b border-[#DFE2E4]/50 hover:bg-[#DFE2E4]/30">
+                          <td className="py-3 px-4 font-medium text-[#31343A]">{item.category}</td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(item.vendorPrice)}</td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(item.shouldCost)}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                              item.gap > 5 ? 'bg-red-50 text-red-700' :
+                              item.gap > 2 ? 'bg-amber-50 text-amber-700' :
+                              'bg-green-50 text-green-700'
+                            }`}>
+                              {item.gap > 0 ? '+' : ''}{item.gap.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-red-600 font-semibold">{formatCurrency(item.atRisk)}</td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{item.beta.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{item.r2.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Vendor Concentration Risk */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Vendor Concentration Risk (HHI)</h3>
+                  <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#DFE2E4]">
+                        <th className="text-left py-3 px-4 text-[#9DA5A8] font-medium">Category</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">HHI</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Top-3 %</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Single-Source %</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Risk</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vendorConcentration.map((item, idx) => (
+                        <tr key={idx} className="border-b border-[#DFE2E4]/50 hover:bg-[#DFE2E4]/30">
+                          <td className="py-3 px-4 font-medium text-[#31343A]">{item.category}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                              item.hhi > 2500 ? 'bg-red-50 text-red-700' :
+                              item.hhi > 1500 ? 'bg-amber-50 text-amber-700' :
+                              'bg-green-50 text-green-700'
+                            }`}>
+                              {item.hhi}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{item.top3Pct}%</td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{item.singleSourcePct}%</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                              item.risk === 'High' ? 'bg-red-50 text-red-700' :
+                              item.risk === 'Medium' ? 'bg-amber-50 text-amber-700' :
+                              'bg-green-50 text-green-700'
+                            }`}>
+                              {item.risk}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Waterfall Chart: Budget → Committed → Invoiced → Paid */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Budget Flow: Budget → Committed → Invoiced → Paid</h3>
+                  <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsBarChart 
+                    data={[
+                      { stage: 'FY Budget', value: 12800000, fill: '#005691' },
+                      { stage: 'Committed', value: 12200000, fill: '#0066a3' },
+                      { stage: 'Invoiced', value: 11500000, fill: '#E00420' },
+                      { stage: 'Paid', value: 9984000, fill: '#31343A' },
+                    ]}
+                    layout="vertical"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
+                    <XAxis type="number" tick={{ fill: '#9DA5A8', fontSize: 12 }} />
+                    <YAxis dataKey="stage" type="category" tick={{ fill: '#9DA5A8', fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #DFE2E4', borderRadius: '6px' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {[
+                        { stage: 'FY Budget', value: 12800000, fill: '#005691' },
+                        { stage: 'Committed', value: 12200000, fill: '#0066a3' },
+                        { stage: 'Invoiced', value: 11500000, fill: '#E00420' },
+                        { stage: 'Paid', value: 9984000, fill: '#31343A' },
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* 2) Spends by Category — with trends */}
+            <div className="space-y-6 mt-8">
+              <h2 className="text-xl font-bold text-[#31343A]">Spends by Category with Trends</h2>
+              
+              {/* Stacked Column Chart with Budget Line */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#31343A] mb-1">Monthly Spend by Category</h3>
+                    <p className="text-sm text-[#9DA5A8]">Stacked columns with budget overlay</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="px-3 py-1 text-sm border border-[#B6BBBE] rounded-lg hover:bg-[#DFE2E4]/30">
+                      YTD
+                    </button>
+                    <button className="px-3 py-1 text-sm bg-[#005691] text-white rounded-lg">
+                      Monthly
+                    </button>
+                    <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={categorySpendTrends.map((d: any) => ({ 
+                    ...d, 
+                    'Steel & Raw Materials': d['Steel & Raw Materials'] / 1000,
+                    'Engine Components': d['Engine Components'] / 1000,
+                    'Electronics & Sensors': d['Electronics & Sensors'] / 1000,
+                    'Tires & Wheels': d['Tires & Wheels'] / 1000,
+                    'Paint & Coatings': d['Paint & Coatings'] / 1000
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
+                    <XAxis dataKey="month" tick={{ fill: '#9DA5A8', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#9DA5A8', fontSize: 12 }} label={{ value: 'Spend (thousands)', angle: -90, position: 'insideLeft', style: { fill: '#9DA5A8', fontSize: 12 } }} />
+                    <Tooltip 
+                      formatter={(value: number) => `₹${value.toLocaleString('en-IN')}K`}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #DFE2E4', borderRadius: '6px' }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                    <Bar dataKey="Steel & Raw Materials" stackId="a" fill="#005691" />
+                    <Bar dataKey="Engine Components" stackId="a" fill="#0066a3" />
+                    <Bar dataKey="Electronics & Sensors" stackId="a" fill="#E00420" />
+                    <Bar dataKey="Tires & Wheels" stackId="a" fill="#31343A" />
+                    <Bar dataKey="Paint & Coatings" stackId="a" fill="#4A4E56" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Category Summary Table */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Category Summary (YTD)</h3>
+                  <div className="flex gap-2">
+                    <button className="px-3 py-1 text-sm border border-[#B6BBBE] rounded-lg hover:bg-[#DFE2E4]/30 text-xs">
+                      Normalize by Volume
+                    </button>
+                    <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#DFE2E4]">
+                        <th className="text-left py-3 px-4 text-[#9DA5A8] font-medium">Category</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Allocated</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Committed</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Invoiced</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Paid</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Utilization</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Should-Cost Gap</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Indexation Coverage</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Volume-Normalized</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Lead Time</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Top 3 Vendors</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Price Δ</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Price Elasticity β</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categorySpendData.map((cat, idx) => {
+                        const allocated = cat.spend / (cat.percentage / 100);
+                        const committed = cat.spend * 0.95;
+                        const invoiced = cat.spend * 0.90;
+                        const paid = cat.spend * 0.85;
+                        const utilization = (paid / allocated) * 100;
+                        const shouldCostGap = shouldCostGaps.find(s => s.category === cat.category);
+                        const shouldCostGapPct = shouldCostGap ? shouldCostGap.gap : (idx % 3 === 0 ? 5.2 : idx % 3 === 1 ? 2.1 : -0.5);
+                        const indexationCoverage = idx % 3 === 0 ? 85 : idx % 3 === 1 ? 72 : 45;
+                        const volumeNormalized = idx === 0 ? '₹45/kg' : idx === 1 ? '₹1.2K/unit' : idx === 2 ? '₹12K/license' : '₹850/unit';
+                        const leadTime = 18 + idx * 2;
+                        const top3Pct = (65 + idx * 5);
+                        const priceDelta = idx % 3 === 0 ? 3.5 : idx % 3 === 1 ? 1.2 : -0.8;
+                        const priceElasticity = idx % 3 === 0 ? 0.95 : idx % 3 === 1 ? 0.88 : 0.72;
+                        return (
+                          <tr key={idx} className="border-b border-[#DFE2E4]/50 hover:bg-[#DFE2E4]/30 cursor-pointer">
+                            <td className="py-3 px-4 font-medium text-[#31343A]">{cat.category}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(allocated)}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(committed)}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(invoiced)}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(paid)}</td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                utilization > 95 ? 'bg-red-50 text-red-700' :
+                                utilization > 85 ? 'bg-amber-50 text-amber-700' :
+                                'bg-green-50 text-green-700'
+                              }`}>
+                                {utilization.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                shouldCostGapPct > 5 ? 'bg-red-50 text-red-700' :
+                                shouldCostGapPct > 2 ? 'bg-amber-50 text-amber-700' :
+                                'bg-green-50 text-green-700'
+                              }`}>
+                                {shouldCostGapPct > 0 ? '+' : ''}{shouldCostGapPct.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{indexationCoverage}%</td>
+                            <td className="py-3 px-4 text-right text-[#31343A] text-xs">{volumeNormalized}</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{leadTime} days</td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{top3Pct.toFixed(0)}%</td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`text-xs font-semibold ${
+                                priceDelta > 2 ? 'text-red-600' : priceDelta > 0 ? 'text-amber-600' : 'text-green-600'
+                              }`}>
+                                {priceDelta > 0 ? '+' : ''}{priceDelta.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right text-[#31343A]">{priceElasticity.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Working Capital Unlocks */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Working Capital Unlocks</h3>
+                  <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {/* DPO Ladder */}
+                  <div>
+                    <h4 className="text-sm font-medium text-[#31343A] mb-3">DPO Ladder by Vendor</h4>
+                    <div className="space-y-2">
+                      {[
+                        { vendor: 'SKF Automotive Bearings', currentDays: 30, peerMedian: 45, dailySpend: 320000, potentialDays: 15, cashUnlock: 4800000 },
+                        { vendor: 'ArcelorMittal Steel', currentDays: 25, peerMedian: 40, dailySpend: 280000, potentialDays: 15, cashUnlock: 4200000 },
+                        { vendor: 'Bosch Electronics', currentDays: 35, peerMedian: 38, dailySpend: 240000, potentialDays: 3, cashUnlock: 720000 },
+                      ].map((item, idx) => (
+                        <div key={idx} className="p-3 bg-[#DFE2E4]/20 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-[#31343A]">{item.vendor}</span>
+                            <span className="text-xs text-[#9DA5A8]">Daily: {formatCurrency(item.dailySpend)}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs">
+                            <span className="text-[#9DA5A8]">Current: {item.currentDays}d</span>
+                            <span className="text-[#9DA5A8]">Peer: {item.peerMedian}d</span>
+                            <span className="text-[#005691] font-semibold">→ {item.currentDays + item.potentialDays}d</span>
+                            <span className="ml-auto text-[#005691] font-bold">Unlock: {formatCurrency(item.cashUnlock)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Dynamic Discounting Candidates */}
+                  <div className="pt-4 border-t border-[#DFE2E4]">
+                    <h4 className="text-sm font-medium text-[#31343A] mb-3">Dynamic Discounting Candidates (APR &gt; 15%)</h4>
+                    <div className="space-y-2">
+                      {[
+                        { vendor: 'TechCorp Solutions', amount: 450000, discountPct: 2.5, apr: 28.5, savings: 11250 },
+                        { vendor: 'Logistics Pro', amount: 320000, discountPct: 2.0, apr: 24.3, savings: 6400 },
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium text-[#31343A]">{item.vendor}</p>
+                            <p className="text-xs text-[#9DA5A8]">{item.discountPct}% discount → {item.apr.toFixed(1)}% APR</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-[#005691]">{formatCurrency(item.savings)}</p>
+                            <p className="text-xs text-[#9DA5A8]">on {formatCurrency(item.amount)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contract Renewal Radar */}
+              <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#31343A]">Contract Renewal Radar</h3>
+                  <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-xs text-red-600 font-medium mb-1">NOW (≤30 days)</p>
+                    <p className="text-2xl font-bold text-red-700">2 contracts</p>
+                    <p className="text-xs text-red-600 mt-1">Renegotiate to 36-month, -11–14% expected</p>
+                  </div>
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-600 font-medium mb-1">30–60 days</p>
+                    <p className="text-2xl font-bold text-amber-700">5 contracts</p>
+                    <p className="text-xs text-amber-600 mt-1">Prepare negotiation strategy</p>
+                  </div>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-600 font-medium mb-1">60–90 days</p>
+                    <p className="text-2xl font-bold text-blue-700">12 contracts</p>
+                    <p className="text-xs text-blue-600 mt-1">Review utilization & performance</p>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#DFE2E4]">
+                        <th className="text-left py-3 px-4 text-[#9DA5A8] font-medium">Vendor/Category</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Renewal Date</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Min Take-or-Pay Util</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Unused Commit ₹</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Indexation Terms</th>
+                        <th className="text-right py-3 px-4 text-[#9DA5A8] font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { vendor: 'SKF Bearings', category: 'Components', renewalDate: '2025-01-15', utilization: 78, unusedCommit: 450000, indexation: 'Steel Index, Qtrly', penaltyRisk: 125000 },
+                        { vendor: 'TechCorp', category: 'Software', renewalDate: '2025-01-28', utilization: 95, unusedCommit: 0, indexation: 'CPI, Annually', penaltyRisk: 0 },
+                        { vendor: 'Logistics Pro', category: 'Freight', renewalDate: '2025-02-10', utilization: 82, unusedCommit: 180000, indexation: 'Fuel Index, Monthly', penaltyRisk: 85000 },
+                      ].map((item, idx) => (
+                        <tr key={idx} className="border-b border-[#DFE2E4]/50 hover:bg-[#DFE2E4]/30">
+                          <td className="py-3 px-4 font-medium text-[#31343A]">{item.vendor}<br/><span className="text-xs text-[#9DA5A8]">{item.category}</span></td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{item.renewalDate}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                              item.utilization < 80 ? 'bg-red-50 text-red-700' :
+                              item.utilization < 90 ? 'bg-amber-50 text-amber-700' :
+                              'bg-green-50 text-green-700'
+                            }`}>
+                              {item.utilization}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-[#31343A]">{formatCurrency(item.unusedCommit)}</td>
+                          <td className="py-3 px-4 text-right text-xs text-[#31343A]">{item.indexation}</td>
+                          <td className="py-3 px-4 text-right">
+                            <button className="px-3 py-1 text-xs bg-[#005691] text-white rounded-lg hover:bg-[#004574]">
+                              Start Renegotiation
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
             {/* Monthly Trend */}
             <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-[#31343A]">Monthly Spend Trend</h3>
+                <h3 className="text-lg font-semibold text-[#31343A]">Total Monthly Spend Trend</h3>
                 <div className="flex gap-2">
                   <button className="px-3 py-1 text-sm border border-[#B6BBBE] rounded-lg hover:bg-[#DFE2E4]/30">
                     This Year
@@ -223,23 +1139,57 @@ export default function CFODashboard() {
               </div>
             </div>
 
-            {/* Strategic Insights */}
-            <div className="bg-gradient-to-r from-[#005691] to-[#0066a3] rounded-lg p-6 text-white">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">AI-Powered Insights</h3>
-                  <p className="text-blue-100 text-sm">Predictive analysis for next quarter procurement needs</p>
+            {/* AI-Powered Insights - Prominent Section */}
+            <div className="bg-gradient-to-r from-[#31343A] via-[#4A4E56] to-[#31343A] rounded-lg p-8 text-white shadow-lg border border-[#DFE2E4]">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-white bg-opacity-90 rounded-lg">
+                      <Lightbulb className="h-6 w-6 text-[#005691]" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold mb-1">AI-Powered Insights</h3>
+                      <p className="text-gray-200 text-sm">Predictive analysis for next quarter procurement needs</p>
+                    </div>
+                  </div>
                 </div>
-                <Lightbulb className="h-8 w-8 text-blue-200" />
+                <button 
+                  onClick={() => window.location.href = '/cfo/insights'}
+                  className="px-4 py-2 bg-[#005691] hover:bg-[#004574] rounded-lg text-sm font-medium text-white transition-all shadow-md"
+                >
+                  View All Insights →
+                </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white bg-opacity-10 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-2">Spend Pattern Insight</p>
-                  <p className="text-blue-100 text-xs">Q4 shows 15% increase in software category spend. Consider multi-year licensing for cost optimization.</p>
+                <div className="bg-[#E00420] bg-opacity-20 backdrop-blur-sm rounded-lg p-5 border border-[#E00420] border-opacity-40 hover:bg-opacity-25 transition-all cursor-pointer">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-[#E00420] bg-opacity-50 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-red-100" />
+                    </div>
+                    <span className="text-xs font-medium bg-[#E00420] bg-opacity-60 px-2 py-1 rounded text-white">Spend Pattern</span>
+                  </div>
+                  <p className="text-sm font-semibold mb-2 text-white">Software Category Increase Detected</p>
+                  <p className="text-red-50 text-xs leading-relaxed">Q4 shows 15% increase in software category spend. Consider multi-year licensing for cost optimization.</p>
+                  <div className="mt-3 pt-3 border-t border-[#E00420] border-opacity-30">
+                    <p className="text-xs text-red-100">
+                      <span className="font-semibold">Potential Savings:</span> {formatCurrency(450000)}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-white bg-opacity-10 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-2">Logistics Cost Trend</p>
-                  <p className="text-blue-100 text-xs">Logistics costs trending upward. Evaluate consolidation opportunities with top 3 vendors.</p>
+                <div className="bg-[#E00420] bg-opacity-20 backdrop-blur-sm rounded-lg p-5 border border-[#E00420] border-opacity-40 hover:bg-opacity-25 transition-all cursor-pointer">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-[#E00420] bg-opacity-50 rounded-lg flex items-center justify-center">
+                      <AlertTriangle className="h-5 w-5 text-red-100" />
+                    </div>
+                    <span className="text-xs font-medium bg-[#E00420] bg-opacity-60 px-2 py-1 rounded text-white">Cost Trend</span>
+                  </div>
+                  <p className="text-sm font-semibold mb-2 text-white">Logistics Costs Trending Upward</p>
+                  <p className="text-red-50 text-xs leading-relaxed">Logistics costs trending upward. Evaluate consolidation opportunities with top 3 vendors.</p>
+                  <div className="mt-3 pt-3 border-t border-[#E00420] border-opacity-30">
+                    <p className="text-xs text-red-100">
+                      <span className="font-semibold">Action:</span> Vendor consolidation recommended
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -414,10 +1364,111 @@ export default function CFODashboard() {
 
             {/* Vendor Efficiency Matrix */}
             <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
-              <h3 className="text-lg font-semibold text-[#31343A] mb-4">Vendor Efficiency Matrix</h3>
-              <p className="text-sm text-[#9DA5A8] mb-4">Cost vs. Delivery Performance Analysis</p>
-              <div className="h-64 flex items-center justify-center bg-[#DFE2E4]/30 rounded-lg border border-[#DFE2E4]">
-                <p className="text-[#9DA5A8]">Efficiency Matrix Visualization</p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-[#31343A] mb-1">Vendor Efficiency Matrix</h3>
+                  <p className="text-sm text-[#9DA5A8]">Cost vs. Delivery Performance Analysis</p>
+                </div>
+                <button className="p-2 text-[#9DA5A8] hover:text-[#9DA5A8]">
+                  <Download className="h-4 w-4" />
+                </button>
+              </div>
+              <ResponsiveContainer width="100%" height={500}>
+                <ScatterChart
+                  margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#DFE2E4" />
+                  <XAxis
+                    type="number"
+                    dataKey="costEfficiency"
+                    name="Cost Efficiency"
+                    unit=""
+                    domain={[0, 100]}
+                    tick={{ fill: '#9DA5A8', fontSize: 12 }}
+                    label={{ value: 'Cost Efficiency (Higher = Better)', position: 'insideBottom', offset: -5, style: { fill: '#9DA5A8', fontSize: 12 } }}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="deliveryPerformance"
+                    name="Delivery Performance"
+                    unit="%"
+                    domain={[0, 100]}
+                    tick={{ fill: '#9DA5A8', fontSize: 12 }}
+                    label={{ value: 'Delivery Performance (%)', angle: -90, position: 'insideLeft', style: { fill: '#9DA5A8', fontSize: 12 } }}
+                  />
+                  <Tooltip
+                    cursor={{ strokeDasharray: '3 3' }}
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #DFE2E4', borderRadius: '6px' }}
+                    formatter={(value: number, name: string, props: any) => {
+                      if (name === 'costEfficiency') return [`${value.toFixed(1)}`, 'Cost Efficiency'];
+                      if (name === 'deliveryPerformance') return [`${value.toFixed(1)}%`, 'Delivery Performance'];
+                      return [value, name];
+                    }}
+                    labelFormatter={(label, payload) => {
+                      if (payload && payload[0] && payload[0].payload) {
+                        return `${payload[0].payload.vendor}`;
+                      }
+                      return '';
+                    }}
+                  />
+                  <ReferenceLine x={70} stroke="#E00420" strokeDasharray="3 3" label={{ value: "Avg Cost", position: "top", fill: '#E00420', fontSize: 11 }} />
+                  <ReferenceLine y={85} stroke="#E00420" strokeDasharray="3 3" label={{ value: "Avg Delivery", position: "right", fill: '#E00420', fontSize: 11 }} />
+                  <Scatter
+                    name="Vendors"
+                    data={[
+                      { costEfficiency: 85, deliveryPerformance: 92, vendor: 'SKF Automotive', spend: 18500000, size: 180 },
+                      { costEfficiency: 78, deliveryPerformance: 88, vendor: 'ArcelorMittal', spend: 15200000, size: 152 },
+                      { costEfficiency: 82, deliveryPerformance: 85, vendor: 'Bosch Electronics', spend: 12800000, size: 128 },
+                      { costEfficiency: 75, deliveryPerformance: 90, vendor: 'TechCorp', spend: 9800000, size: 98 },
+                      { costEfficiency: 88, deliveryPerformance: 78, vendor: 'Logistics Pro', spend: 7500000, size: 75 },
+                      { costEfficiency: 72, deliveryPerformance: 95, vendor: 'Quality Parts Co', spend: 6200000, size: 62 },
+                      { costEfficiency: 65, deliveryPerformance: 82, vendor: 'Global Supplies', spend: 5400000, size: 54 },
+                      { costEfficiency: 90, deliveryPerformance: 72, vendor: 'Budget Solutions', spend: 4800000, size: 48 },
+                      { costEfficiency: 58, deliveryPerformance: 88, vendor: 'Premium Vendors', spend: 4200000, size: 42 },
+                      { costEfficiency: 82, deliveryPerformance: 80, vendor: 'Reliable Source', spend: 3800000, size: 38 },
+                      { costEfficiency: 68, deliveryPerformance: 75, vendor: 'Standard Parts', spend: 3200000, size: 32 },
+                      { costEfficiency: 55, deliveryPerformance: 68, vendor: 'Economy Suppliers', spend: 2800000, size: 28 },
+                    ]}
+                    fill="#005691"
+                  >
+                    {[
+                      { costEfficiency: 85, deliveryPerformance: 92, vendor: 'SKF Automotive', spend: 18500000, size: 180, color: '#005691' },
+                      { costEfficiency: 78, deliveryPerformance: 88, vendor: 'ArcelorMittal', spend: 15200000, size: 152, color: '#0066a3' },
+                      { costEfficiency: 82, deliveryPerformance: 85, vendor: 'Bosch Electronics', spend: 12800000, size: 128, color: '#005691' },
+                      { costEfficiency: 75, deliveryPerformance: 90, vendor: 'TechCorp', spend: 9800000, size: 98, color: '#0066a3' },
+                      { costEfficiency: 88, deliveryPerformance: 78, vendor: 'Logistics Pro', spend: 7500000, size: 75, color: '#005691' },
+                      { costEfficiency: 72, deliveryPerformance: 95, vendor: 'Quality Parts Co', spend: 6200000, size: 62, color: '#0066a3' },
+                      { costEfficiency: 65, deliveryPerformance: 82, vendor: 'Global Supplies', spend: 5400000, size: 54, color: '#E00420' },
+                      { costEfficiency: 90, deliveryPerformance: 72, vendor: 'Budget Solutions', spend: 4800000, size: 48, color: '#005691' },
+                      { costEfficiency: 58, deliveryPerformance: 88, vendor: 'Premium Vendors', spend: 4200000, size: 42, color: '#4A4E56' },
+                      { costEfficiency: 82, deliveryPerformance: 80, vendor: 'Reliable Source', spend: 3800000, size: 38, color: '#005691' },
+                      { costEfficiency: 68, deliveryPerformance: 75, vendor: 'Standard Parts', spend: 3200000, size: 32, color: '#E00420' },
+                      { costEfficiency: 55, deliveryPerformance: 68, vendor: 'Economy Suppliers', spend: 2800000, size: 28, color: '#E00420' },
+                    ].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Scatter>
+                  <Legend />
+                </ScatterChart>
+              </ResponsiveContainer>
+              {/* Quadrant Labels */}
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#DFE2E4]">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-xs font-semibold text-green-700 mb-1">⭐ Champions (Top-Right)</p>
+                  <p className="text-xs text-green-600">High cost efficiency, excellent delivery</p>
+                </div>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs font-semibold text-amber-700 mb-1">💰 Cost Leaders (Top-Left)</p>
+                  <p className="text-xs text-amber-600">High cost efficiency, delivery improvement needed</p>
+                </div>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs font-semibold text-blue-700 mb-1">⚡ Delivery Stars (Bottom-Right)</p>
+                  <p className="text-xs text-blue-600">Excellent delivery, cost optimization needed</p>
+                </div>
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-xs font-semibold text-red-700 mb-1">⚠️ Underperformers (Bottom-Left)</p>
+                  <p className="text-xs text-red-600">Need improvement in both areas</p>
+                </div>
               </div>
             </div>
 
@@ -630,29 +1681,31 @@ export default function CFODashboard() {
             </div>
 
             {/* AI-Powered Insights Hero */}
-            <div className="bg-gradient-to-r from-[#005691] to-[#0066a3] rounded-lg p-8 text-white">
+            <div className="bg-gradient-to-r from-[#31343A] via-[#4A4E56] to-[#31343A] rounded-lg p-8 text-white shadow-lg border border-[#DFE2E4]">
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h3 className="text-2xl font-semibold mb-2">AI-Powered Predictive Analysis</h3>
-                  <p className="text-blue-100">Advanced analytics for next-quarter procurement needs and optimization opportunities</p>
+                  <p className="text-gray-200">Advanced analytics for next-quarter procurement needs and optimization opportunities</p>
                 </div>
-                <Lightbulb className="h-10 w-10 text-blue-200" />
+                <div className="p-2 bg-white bg-opacity-90 rounded-lg">
+                  <Lightbulb className="h-10 w-10 text-[#005691]" />
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white bg-opacity-10 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-2">Predicted Q1 2025 Spend</p>
-                  <p className="text-2xl font-bold">{formatCurrency(3200000)}</p>
-                  <p className="text-xs text-blue-100 mt-1">+5% vs Q4 2024 forecast</p>
+                <div className="bg-[#E00420] bg-opacity-30 rounded-lg p-4 border border-[#E00420] border-opacity-50">
+                  <p className="text-sm font-medium mb-2 text-white">Predicted Q1 2025 Spend</p>
+                  <p className="text-2xl font-bold text-white">{formatCurrency(3200000)}</p>
+                  <p className="text-xs text-red-100 mt-1">+5% vs Q4 2024 forecast</p>
                 </div>
-                <div className="bg-white bg-opacity-10 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-2">Optimization Potential</p>
-                  <p className="text-2xl font-bold">{formatCurrency(770000)}</p>
-                  <p className="text-xs text-blue-100 mt-1">Identified savings opportunities</p>
+                <div className="bg-[#E00420] bg-opacity-30 rounded-lg p-4 border border-[#E00420] border-opacity-50">
+                  <p className="text-sm font-medium mb-2 text-white">Optimization Potential</p>
+                  <p className="text-2xl font-bold text-white">{formatCurrency(770000)}</p>
+                  <p className="text-xs text-red-100 mt-1">Identified savings opportunities</p>
                 </div>
-                <div className="bg-white bg-opacity-10 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-2">Risk Level</p>
-                  <p className="text-2xl font-bold">Medium</p>
-                  <p className="text-xs text-blue-100 mt-1">2 high-risk vendor contracts</p>
+                <div className="bg-[#E00420] bg-opacity-30 rounded-lg p-4 border border-[#E00420] border-opacity-50">
+                  <p className="text-sm font-medium mb-2 text-white">Risk Level</p>
+                  <p className="text-2xl font-bold text-white">Medium</p>
+                  <p className="text-xs text-red-100 mt-1">2 high-risk vendor contracts</p>
                 </div>
               </div>
             </div>
@@ -661,20 +1714,26 @@ export default function CFODashboard() {
             <div className="bg-white rounded-lg border border-[#DFE2E4] p-6">
               <h3 className="text-lg font-semibold text-[#31343A] mb-4">Spend Pattern Insights</h3>
               <div className="space-y-4">
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <h4 className="font-medium text-[#31343A] mb-1">Q4 Software Category Increase</h4>
-                  <p className="text-sm text-[#9DA5A8] mb-2">15% increase in software category spend detected. This trend is expected to continue.</p>
-                  <p className="text-xs text-[#9DA5A8]"><strong>Recommendation:</strong> Consider multi-year licensing agreements for cost optimization (potential savings: {formatCurrency(450000)})</p>
+                <div className="bg-white rounded-lg p-5 border border-[#DFE2E4]">
+                  <div className="border-l-4 border-[#005691] pl-4">
+                    <h4 className="font-medium text-[#31343A] mb-1">Q4 Software Category Increase</h4>
+                    <p className="text-sm text-[#31343A] mb-2">15% increase in software category spend detected. This trend is expected to continue.</p>
+                    <p className="text-xs text-[#31343A]"><strong>Recommendation:</strong> Consider multi-year licensing agreements for cost optimization (potential savings: {formatCurrency(450000)})</p>
+                  </div>
                 </div>
-                <div className="border-l-4 border-amber-500 pl-4">
-                  <h4 className="font-medium text-[#31343A] mb-1">Logistics Cost Trend</h4>
-                  <p className="text-sm text-[#9DA5A8] mb-2">Logistics costs trending upward (+8% month-over-month). Evaluate consolidation opportunities.</p>
-                  <p className="text-xs text-[#9DA5A8]"><strong>Recommendation:</strong> Consolidate with top 3 vendors for better negotiation leverage</p>
+                <div className="bg-white rounded-lg p-5 border border-[#DFE2E4]">
+                  <div className="border-l-4 border-[#005691] pl-4">
+                    <h4 className="font-medium text-[#31343A] mb-1">Logistics Cost Trend</h4>
+                    <p className="text-sm text-[#31343A] mb-2">Logistics costs trending upward (+8% month-over-month). Evaluate consolidation opportunities.</p>
+                    <p className="text-xs text-[#31343A]"><strong>Recommendation:</strong> Consolidate with top 3 vendors for better negotiation leverage</p>
+                  </div>
                 </div>
-                <div className="border-l-4 border-green-500 pl-4">
-                  <h4 className="font-medium text-[#31343A] mb-1">Manufacturing Efficiency</h4>
-                  <p className="text-sm text-[#9DA5A8] mb-2">Manufacturing department consistently operating under budget (-7% average variance).</p>
-                  <p className="text-xs text-[#9DA5A8]"><strong>Recommendation:</strong> Consider allocating saved budget to critical infrastructure upgrades</p>
+                <div className="bg-white rounded-lg p-5 border border-[#DFE2E4]">
+                  <div className="border-l-4 border-[#005691] pl-4">
+                    <h4 className="font-medium text-[#31343A] mb-1">Manufacturing Efficiency</h4>
+                    <p className="text-sm text-[#31343A] mb-2">Manufacturing department consistently operating under budget (-7% average variance).</p>
+                    <p className="text-xs text-[#31343A]"><strong>Recommendation:</strong> Consider allocating saved budget to critical infrastructure upgrades</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -752,48 +1811,48 @@ export default function CFODashboard() {
             </div>
 
             {/* Predictive Analysis */}
-            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 p-6">
-              <h3 className="text-lg font-semibold text-[#31343A] mb-4">Predictive Analysis for Next Quarter</h3>
+            <div className="bg-gradient-to-r from-[#31343A] via-[#4A4E56] to-[#31343A] rounded-lg border border-[#DFE2E4] p-6 text-white">
+              <h3 className="text-lg font-semibold mb-4">Predictive Analysis for Next Quarter</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg p-4 border border-purple-200">
-                  <h4 className="font-medium text-[#31343A] mb-2">Expected Procurement Volume</h4>
-                  <p className="text-sm text-[#9DA5A8] mb-3">Based on historical patterns and current order pipeline</p>
+                <div className="bg-[#E00420] bg-opacity-30 rounded-lg p-4 border border-[#E00420] border-opacity-50">
+                  <h4 className="font-medium mb-2 text-white">Expected Procurement Volume</h4>
+                  <p className="text-sm text-red-100 mb-3">Based on historical patterns and current order pipeline</p>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#9DA5A8]">Raw Materials</span>
-                      <span className="text-sm font-semibold text-[#31343A]">{formatCurrency(1150000)}</span>
+                      <span className="text-sm text-red-100">Raw Materials</span>
+                      <span className="text-sm font-semibold text-white">{formatCurrency(1150000)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#9DA5A8]">Software</span>
-                      <span className="text-sm font-semibold text-[#31343A]">{formatCurrency(850000)}</span>
+                      <span className="text-sm text-red-100">Software</span>
+                      <span className="text-sm font-semibold text-white">{formatCurrency(850000)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#9DA5A8]">Equipment</span>
-                      <span className="text-sm font-semibold text-[#31343A]">{formatCurrency(650000)}</span>
+                      <span className="text-sm text-red-100">Equipment</span>
+                      <span className="text-sm font-semibold text-white">{formatCurrency(650000)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#9DA5A8]">Services</span>
-                      <span className="text-sm font-semibold text-[#31343A]">{formatCurrency(550000)}</span>
+                      <span className="text-sm text-red-100">Services</span>
+                      <span className="text-sm font-semibold text-white">{formatCurrency(550000)}</span>
                     </div>
                   </div>
                 </div>
-                <div className="bg-white rounded-lg p-4 border border-purple-200">
-                  <h4 className="font-medium text-[#31343A] mb-2">Recommended Actions</h4>
-                  <ul className="space-y-2 text-sm text-[#9DA5A8]">
+                <div className="bg-[#E00420] bg-opacity-30 rounded-lg p-4 border border-[#E00420] border-opacity-50">
+                  <h4 className="font-medium mb-2 text-white">Recommended Actions</h4>
+                  <ul className="space-y-2 text-sm text-red-100">
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-1">•</span>
+                      <span className="text-white mt-1">•</span>
                       <span>Initiate contract renewal discussions with 3 high-value vendors</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-1">•</span>
+                      <span className="text-white mt-1">•</span>
                       <span>Review and optimize software licensing agreements</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-1">•</span>
+                      <span className="text-white mt-1">•</span>
                       <span>Consider bulk purchasing for raw materials Q1 2025</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-1">•</span>
+                      <span className="text-white mt-1">•</span>
                       <span>Evaluate new vendor partnerships for logistics consolidation</span>
                     </li>
                   </ul>
